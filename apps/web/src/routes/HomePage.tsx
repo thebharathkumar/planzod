@@ -97,7 +97,9 @@ export default function HomePage() {
     lng: -98.35,
   });
   const [zoom, setZoom] = useState(4);
-  const [radiusKm, setRadiusKm] = useState(50);
+  // Default to a continental-scale radius so events show up before the
+  // user grants geolocation. They can dial it back via the slider.
+  const [radiusKm, setRadiusKm] = useState(5000);
   const [category, setCategory] = useState<string>("");
   const [price, setPrice] = useState<"any" | "free" | "paid">("any");
   const [startingSoon, setStartingSoon] = useState(false);
@@ -262,7 +264,7 @@ export default function HomePage() {
             <input
               type="range"
               min={1}
-              max={500}
+              max={20000}
               step={1}
               value={radiusKm}
               onChange={(e) => setRadiusKm(Number(e.target.value))}
