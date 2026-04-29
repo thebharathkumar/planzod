@@ -1,10 +1,32 @@
 import L from "leaflet";
 import { useEffect, useState } from "react";
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import { Link, useParams } from "react-router-dom";
 import EventReviews from "../components/EventReviews";
 import { useAuth } from "../lib/auth";
 import { getEvent } from "../lib/api";
+
+function MapAutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    const fix = () => map.invalidateSize();
+    const t1 = setTimeout(fix, 50);
+    const t2 = setTimeout(fix, 250);
+    const t3 = setTimeout(fix, 800);
+    window.addEventListener("resize", fix);
+    const container = map.getContainer();
+    const ro = new ResizeObserver(fix);
+    if (container) ro.observe(container);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener("resize", fix);
+      ro.disconnect();
+    };
+  }, [map]);
+  return null;
+}
 
 type TicketTier = {
   id: string;
@@ -171,6 +193,7 @@ export default function EventPage() {
                 scrollWheelZoom={false}
                 style={{ height: "100%", width: "100%" }}
               >
+                <MapAutoResize />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

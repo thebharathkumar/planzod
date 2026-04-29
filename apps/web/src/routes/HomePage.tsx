@@ -65,20 +65,27 @@ function FlyTo({
 }
 
 // Leaflet sometimes initializes before its container settles its size, leaving
-// blank tiles. Force a recompute on mount and on window resize.
+// blank tiles. Force a recompute on mount, on window resize, and whenever the
+// container itself changes size (sticky/grid reflow, font load, etc).
 function MapAutoResize() {
   const map = useMap();
   useEffect(() => {
     const fix = () => map.invalidateSize();
-    const t1 = setTimeout(fix, 100);
-    const t2 = setTimeout(fix, 400);
-    const t3 = setTimeout(fix, 1000);
+    const t1 = setTimeout(fix, 50);
+    const t2 = setTimeout(fix, 250);
+    const t3 = setTimeout(fix, 800);
+    const t4 = setTimeout(fix, 2000);
     window.addEventListener("resize", fix);
+    const container = map.getContainer();
+    const ro = new ResizeObserver(fix);
+    if (container) ro.observe(container);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
       window.removeEventListener("resize", fix);
+      ro.disconnect();
     };
   }, [map]);
   return null;
@@ -280,7 +287,7 @@ export default function HomePage() {
         <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
           {/* Map */}
           <div className="card overflow-hidden p-0 lg:sticky lg:top-20 lg:self-start">
-            <div className="h-[520px] w-full">
+            <div className="h-[520px] min-h-[420px] w-full">
               <MapContainer
                 center={[location.lat, location.lng]}
                 zoom={zoom}

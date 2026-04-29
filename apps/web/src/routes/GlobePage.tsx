@@ -104,49 +104,61 @@ export default function GlobePage() {
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("click", onClick);
 
-    const size = canvas.clientWidth;
-    const globe = createGlobe(canvas, {
-      devicePixelRatio: window.devicePixelRatio || 2,
-      width: size * 2,
-      height: size * 2,
-      phi: 0,
-      theta: 0.25,
-      dark: 1,
-      diffuse: 1.4,
-      mapSamples: 16000,
-      mapBrightness: 5.5,
-      // Warm orange ↔ violet to match the rest of the app.
-      baseColor: [0.18, 0.12, 0.08],
-      markerColor: [0.97, 0.45, 0.09],
-      glowColor: [0.55, 0.28, 0.55],
-      markers: MOCK_EVENTS.map((e) => ({
-        location: [e.lat, e.lng] as [number, number],
-        size: e.featured ? 0.09 : 0.06,
-      })),
-      onRender: (state) => {
-        if (!draggingRef.current) {
-          phiRef.current += 0.0025;
-        }
-        state.phi = phiRef.current;
-        state.theta = thetaRef.current;
-      },
+    let globe: ReturnType<typeof createGlobe> | null = null;
+
+    function init(size: number) {
+      if (globe) globe.destroy();
+      globe = createGlobe(canvas!, {
+        devicePixelRatio: window.devicePixelRatio || 2,
+        width: size * 2,
+        height: size * 2,
+        phi: 0,
+        theta: 0.25,
+        dark: 1,
+        diffuse: 1.4,
+        mapSamples: 16000,
+        mapBrightness: 5.5,
+        baseColor: [0.18, 0.12, 0.08],
+        markerColor: [0.97, 0.45, 0.09],
+        glowColor: [0.55, 0.28, 0.55],
+        markers: MOCK_EVENTS.map((e) => ({
+          location: [e.lat, e.lng] as [number, number],
+          size: e.featured ? 0.09 : 0.06,
+        })),
+        onRender: (state) => {
+          if (!draggingRef.current) {
+            phiRef.current += 0.0025;
+          }
+          state.phi = phiRef.current;
+          state.theta = thetaRef.current;
+          state.width = size * 2;
+          state.height = size * 2;
+        },
+      });
+    }
+
+    // Wait for the canvas to have real dimensions before booting cobe —
+    // on first React mount clientWidth can be 0 and the globe ends up
+    // rendering at 0×0.
+    let lastSize = 0;
+    const ro = new ResizeObserver(() => {
+      const w = canvas.clientWidth;
+      if (w > 0 && Math.abs(w - lastSize) > 4) {
+        lastSize = w;
+        init(w);
+      }
     });
+    ro.observe(canvas);
 
     canvas.style.cursor = "grab";
 
-    const onResize = () => {
-      // cobe doesn't support resize natively; for our purposes the fixed pixel
-      // ratio handles most cases. Reload on big window changes if needed.
-    };
-    window.addEventListener("resize", onResize);
-
     return () => {
-      globe.destroy();
+      globe?.destroy();
+      ro.disconnect();
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("click", onClick);
-      window.removeEventListener("resize", onResize);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
