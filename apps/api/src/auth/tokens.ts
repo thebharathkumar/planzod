@@ -11,18 +11,20 @@ type RefreshClaims = {
 
 export function signAccessToken(userId: string): string {
   const claims: AccessClaims = { typ: "access" };
-  return jwt.sign(claims, env.JWT_ACCESS_SECRET, {
+  const options: jwt.SignOptions = {
     subject: userId,
-    expiresIn: env.JWT_ACCESS_TTL
-  });
+    expiresIn: env.JWT_ACCESS_TTL as jwt.SignOptions["expiresIn"],
+  };
+  return jwt.sign(claims, env.JWT_ACCESS_SECRET, options);
 }
 
 export function signRefreshToken(userId: string): string {
   const claims: RefreshClaims = { typ: "refresh" };
-  return jwt.sign(claims, env.JWT_REFRESH_SECRET, {
+  const options: jwt.SignOptions = {
     subject: userId,
-    expiresIn: env.JWT_REFRESH_TTL
-  });
+    expiresIn: env.JWT_REFRESH_TTL as jwt.SignOptions["expiresIn"],
+  };
+  return jwt.sign(claims, env.JWT_REFRESH_SECRET, options);
 }
 
 export function verifyAccessToken(token: string): { userId: string } {
@@ -32,11 +34,13 @@ export function verifyAccessToken(token: string): { userId: string } {
   return { userId: decoded.sub };
 }
 
-export function verifyRefreshToken(token: string): { userId: string; exp: number } {
+export function verifyRefreshToken(token: string): {
+  userId: string;
+  exp: number;
+} {
   const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET) as jwt.JwtPayload;
   if (decoded.typ !== "refresh") throw new Error("Invalid refresh token");
   if (!decoded.sub) throw new Error("Missing subject");
   if (!decoded.exp) throw new Error("Missing exp");
   return { userId: decoded.sub, exp: decoded.exp };
 }
-

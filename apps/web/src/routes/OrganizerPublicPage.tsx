@@ -23,9 +23,11 @@ export default function OrganizerPublicPage() {
   const { id } = useParams();
   const [organizer, setOrganizer] = useState<OrganizerPublic | null>(null);
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
-  const [stats, setStats] = useState<{ avg_rating: number | null; review_count: number; verified: boolean } | null>(
-    null
-  );
+  const [stats, setStats] = useState<{
+    avg_rating: number | null;
+    review_count: number;
+    verified: boolean;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [rating, setRating] = useState(5);
@@ -35,7 +37,9 @@ export default function OrganizerPublicPage() {
   useEffect(() => {
     (async () => {
       setError(null);
-      const res = await fetch(`${API_BASE_URL}/organizer/public/${id}`, { headers: { accept: "application/json" } });
+      const res = await fetch(`${API_BASE_URL}/organizer/public/${id}`, {
+        headers: { accept: "application/json" },
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data?.message ?? "Failed to load organizer");
@@ -48,11 +52,17 @@ export default function OrganizerPublicPage() {
   }, [id]);
 
   if (error) {
-    return <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>;
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+        {error}
+      </div>
+    );
   }
 
   if (!organizer) {
-    return <div className="card py-12 text-center text-surface-400">Loading…</div>;
+    return (
+      <div className="card py-12 text-center text-surface-400">Loading…</div>
+    );
   }
 
   return (
@@ -62,12 +72,17 @@ export default function OrganizerPublicPage() {
         <div className="mt-2 flex flex-wrap items-center gap-2 text-2xl font-semibold">
           {organizer.display_name}
           {stats?.verified ? (
-            <span className="rounded-full bg-surface-800 px-2 py-1 text-xs text-surface-300">Verified</span>
+            <span className="rounded-full bg-surface-800 px-2 py-1 text-xs text-surface-300">
+              Verified
+            </span>
           ) : null}
         </div>
-        <div className="mt-1 text-xs text-surface-500">Since {new Date(organizer.created_at).toLocaleDateString()}</div>
+        <div className="mt-1 text-xs text-surface-500">
+          Since {new Date(organizer.created_at).toLocaleDateString()}
+        </div>
         <div className="mt-2 text-sm text-surface-300">
-          Rating: {stats?.avg_rating ? `${stats.avg_rating.toFixed(1)}★` : "New"} •{" "}
+          Rating:{" "}
+          {stats?.avg_rating ? `${stats.avg_rating.toFixed(1)}★` : "New"} •{" "}
           {stats?.review_count ?? 0} reviews
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -97,7 +112,9 @@ export default function OrganizerPublicPage() {
       </div>
 
       <div>
-        <h2 className="font-display text-lg font-semibold text-surface-50">Upcoming events</h2>
+        <h2 className="font-display text-lg font-semibold text-surface-50">
+          Upcoming events
+        </h2>
         {events.length === 0 ? (
           <div className="mt-3 rounded-lg border border-surface-700 bg-surface-900/40 p-4 text-sm text-surface-300">
             No published events yet.
@@ -105,8 +122,14 @@ export default function OrganizerPublicPage() {
         ) : (
           <ul className="mt-3 grid gap-3 md:grid-cols-2">
             {events.map((e) => (
-              <li key={e.id} className="rounded-lg border border-surface-700 bg-surface-900/40 p-4">
-                <Link to={`/events/${e.id}`} className="block text-base font-semibold hover:underline">
+              <li
+                key={e.id}
+                className="rounded-lg border border-surface-700 bg-surface-900/40 p-4"
+              >
+                <Link
+                  to={`/events/${e.id}`}
+                  className="block text-base font-semibold hover:underline"
+                >
                   {e.title}
                 </Link>
                 <div className="mt-1 text-sm text-surface-300">
@@ -114,8 +137,12 @@ export default function OrganizerPublicPage() {
                   {e.venue_address ? ` • ${e.venue_address}` : ""}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-surface-300">
-                  <span className="rounded-full bg-surface-800 px-2 py-1">{e.category}</span>
-                  <span className="rounded-full bg-surface-800 px-2 py-1">{new Date(e.starts_at).toLocaleString()}</span>
+                  <span className="rounded-full bg-surface-800 px-2 py-1">
+                    {e.category}
+                  </span>
+                  <span className="rounded-full bg-surface-800 px-2 py-1">
+                    {new Date(e.starts_at).toLocaleString()}
+                  </span>
                 </div>
               </li>
             ))}
@@ -124,7 +151,9 @@ export default function OrganizerPublicPage() {
       </div>
 
       <div className="rounded-lg border border-surface-700 bg-surface-900/40 p-4">
-        <h2 className="font-display text-lg font-semibold text-surface-50">Leave a review</h2>
+        <h2 className="font-display text-lg font-semibold text-surface-50">
+          Leave a review
+        </h2>
         <p className="mt-1 text-sm text-surface-300">
           You can review after attending (requires a ticket tied to the event).
         </p>
@@ -180,11 +209,21 @@ export default function OrganizerPublicPage() {
               setReviewMessage("Select an event first.");
               return;
             }
-            const res = await fetch(`${API_BASE_URL}/organizer/public/${id}/reviews`, {
-              method: "POST",
-              headers: { "content-type": "application/json", accept: "application/json" },
-              body: JSON.stringify({ eventId: selectedEvent, rating, comment })
-            });
+            const res = await fetch(
+              `${API_BASE_URL}/organizer/public/${id}/reviews`,
+              {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  accept: "application/json",
+                },
+                body: JSON.stringify({
+                  eventId: selectedEvent,
+                  rating,
+                  comment,
+                }),
+              },
+            );
             const data = await res.json();
             if (!res.ok) {
               setReviewMessage(data?.message ?? "Failed to submit review");

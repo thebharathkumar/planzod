@@ -12,11 +12,17 @@ export default function RegisterPage() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <div className="text-center">
-        <h1 className="font-display text-2xl font-bold text-surface-50">Create account</h1>
-        <p className="mt-1 text-surface-400">Join Planzo and discover local workshops</p>
+        <h1 className="font-display text-2xl font-bold text-surface-50">
+          Create account
+        </h1>
+        <p className="mt-1 text-surface-400">
+          Join Planzo and discover local workshops
+        </p>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
       ) : null}
       <form
         className="card space-y-4"
@@ -59,7 +65,10 @@ export default function RegisterPage() {
       </form>
       <p className="text-center text-sm text-surface-400">
         Already have an account?{" "}
-        <Link className="font-medium text-brand-400 hover:text-brand-300" to="/login">
+        <Link
+          className="font-medium text-brand-400 hover:text-brand-300"
+          to="/login"
+        >
           Sign in
         </Link>
       </p>

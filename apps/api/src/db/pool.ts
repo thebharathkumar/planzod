@@ -4,5 +4,5 @@ import { env } from "../env";
 const { Pool } = pg;
 
 export const pool = new Pool({
-  connectionString: env.DATABASE_URL
+  connectionString: env.DATABASE_URL,
 });

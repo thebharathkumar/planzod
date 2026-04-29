@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { API_BASE_URL } from "./env";
 
 export type User = {
@@ -31,7 +37,7 @@ function loadStored(): AuthState {
     return {
       user: parsed.user ?? null,
       accessToken: parsed.accessToken ?? null,
-      refreshToken: parsed.refreshToken ?? null
+      refreshToken: parsed.refreshToken ?? null,
     };
   } catch {
     return { user: null, accessToken: null, refreshToken: null };
@@ -50,7 +56,8 @@ async function parseJsonOrThrow(res: Response) {
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    const message = data?.message || data?.error || `Request failed (${res.status})`;
+    const message =
+      data?.message || data?.error || `Request failed (${res.status})`;
     throw new Error(message);
   }
   return data;
@@ -67,16 +74,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const apiFetch = useMemo(() => {
-    return async function apiFetchImpl<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return async function apiFetchImpl<T>(
+      path: string,
+      init: RequestInit = {},
+    ): Promise<T> {
       const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
       const headers = new Headers(init.headers);
       headers.set("accept", "application/json");
 
-      const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+      const isFormData =
+        typeof FormData !== "undefined" && init.body instanceof FormData;
       if (!isFormData && init.body && !headers.has("content-type")) {
         headers.set("content-type", "application/json");
       }
-      if (state.accessToken) headers.set("authorization", `Bearer ${state.accessToken}`);
+      if (state.accessToken)
+        headers.set("authorization", `Bearer ${state.accessToken}`);
 
       const res = await fetch(url, { ...init, headers });
       if (res.status !== 401 || !state.refreshToken) {
@@ -86,13 +98,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Attempt refresh once, then retry.
       const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ refreshToken: state.refreshToken })
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({ refreshToken: state.refreshToken }),
       });
       const refreshData = await parseJsonOrThrow(refreshRes);
       const newAccess = refreshData.accessToken as string;
       const newRefresh = refreshData.refreshToken as string;
-      setState((s) => ({ ...s, accessToken: newAccess, refreshToken: newRefresh }));
+      setState((s) => ({
+        ...s,
+        accessToken: newAccess,
+        refreshToken: newRefresh,
+      }));
 
       const retryHeaders = new Headers(headers);
       retryHeaders.set("authorization", `Bearer ${newAccess}`);
@@ -120,15 +139,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    const data = await apiFetch<{ user: User; accessToken: string; refreshToken: string }>("/auth/login", {
+    const data = await apiFetch<{
+      user: User;
+      accessToken: string;
+      refreshToken: string;
+    }>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password }),
     });
-    setState({ user: data.user, accessToken: data.accessToken, refreshToken: data.refreshToken });
+    setState({
+      user: data.user,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    });
   }
 
   async function register(email: string, password: string) {
-    await apiFetch("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+    await apiFetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
     await login(email, password);
   }
 
@@ -140,8 +170,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ refreshToken })
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
       });
     } catch {
       // Best-effort.
@@ -154,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     register,
     logout,
-    apiFetch
+    apiFetch,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -165,4 +198,3 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
 }
-

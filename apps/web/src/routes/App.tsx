@@ -15,9 +15,21 @@ import PricingPage from "./PricingPage";
 import RegisterPage from "./RegisterPage";
 import ScannerPage from "./ScannerPage";
 import WaitlistPage from "./WaitlistPage";
+import ProfilePage from "./ProfilePage";
+import ForgotPasswordPage from "./ForgotPasswordPage";
+import SupportPage from "./SupportPage";
+import BookingsPage from "./BookingsPage";
+import RefundsPage from "./RefundsPage";
+import OrganizerRefundsPage from "./OrganizerRefundsPage";
+import OrganizerAnnouncementsPage from "./OrganizerAnnouncementsPage";
+import AdminFinancePage from "./AdminFinancePage";
+import AdminAnalyticsPage from "./AdminAnalyticsPage";
+import AdminMarketingPage from "./AdminMarketingPage";
 
 export default function App() {
   const auth = useAuth();
+  const isAdmin = auth.user?.role === "admin";
+  const isOrganizer = auth.user?.role === "organizer" || isAdmin;
 
   return (
     <div className="min-h-full bg-surface-950 text-surface-100">
@@ -30,33 +42,72 @@ export default function App() {
             Planzo
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2">
-            <Link className="btn-ghost hidden py-2 sm:inline-flex" to="/product">
+            <Link
+              className="btn-ghost hidden py-2 sm:inline-flex"
+              to="/product"
+            >
               Product
             </Link>
-            <Link className="btn-ghost hidden py-2 sm:inline-flex" to="/pricing">
+            <Link
+              className="btn-ghost hidden py-2 sm:inline-flex"
+              to="/pricing"
+            >
               Pricing
             </Link>
-            <Link className="btn-ghost hidden py-2 sm:inline-flex" to="/waitlist">
-              Waitlist
+            {auth.user && (
+              <Link className="btn-ghost py-2" to="/bookings">
+                Bookings
+              </Link>
+            )}
+            <Link className="btn-ghost py-2" to="/my/tickets">
+              Tickets
             </Link>
-            <Link className="btn-ghost py-2 sm:inline-flex" to="/my/tickets">
-              My Tickets
-            </Link>
-            <Link className="btn-ghost py-2 sm:inline-flex" to="/organizer">
-              Organizer
-            </Link>
-            <Link className="btn-ghost py-2 sm:inline-flex" to="/scanner">
+            {isOrganizer && (
+              <Link className="btn-ghost py-2" to="/organizer">
+                Organizer
+              </Link>
+            )}
+            <Link className="btn-ghost py-2" to="/scanner">
               Scanner
             </Link>
-            <Link className="btn-ghost hidden py-2 sm:inline-flex" to="/emails">
-              Emails
+            <Link
+              className="btn-ghost hidden py-2 md:inline-flex"
+              to="/support"
+            >
+              Support
             </Link>
+            {isAdmin && (
+              <>
+                <Link
+                  className="btn-ghost hidden py-2 md:inline-flex"
+                  to="/admin/marketing"
+                >
+                  Marketing
+                </Link>
+                <Link
+                  className="btn-ghost hidden py-2 md:inline-flex"
+                  to="/admin/finance"
+                >
+                  Finance
+                </Link>
+                <Link
+                  className="btn-ghost hidden py-2 md:inline-flex"
+                  to="/admin/analytics"
+                >
+                  Analytics
+                </Link>
+              </>
+            )}
             {auth.user ? (
               <>
-                <span className="hidden truncate max-w-[140px] text-surface-400 text-sm md:inline">
-                  {auth.user.email}
-                </span>
-                <button type="button" className="btn-secondary ml-2" onClick={() => auth.logout()}>
+                <Link className="btn-ghost py-2" to="/account">
+                  Account
+                </Link>
+                <button
+                  type="button"
+                  className="btn-secondary ml-2"
+                  onClick={() => auth.logout()}
+                >
                   Logout
                 </button>
               </>
@@ -83,14 +134,34 @@ export default function App() {
           <Route path="/emails" element={<EmailPreviewsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ForgotPasswordPage />} />
           <Route path="/events/:id" element={<EventPage />} />
           <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
           <Route path="/my/tickets" element={<MyTicketsPage />} />
+          <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/refunds" element={<RefundsPage />} />
+          <Route path="/account" element={<ProfilePage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/organizer" element={<OrganizerDashboardPage />} />
-          <Route path="/organizer/events/new" element={<OrganizerEventNewPage />} />
-          <Route path="/organizer/events/:id/edit" element={<OrganizerEventEditPage />} />
+          <Route
+            path="/organizer/events/new"
+            element={<OrganizerEventNewPage />}
+          />
+          <Route
+            path="/organizer/events/:id/edit"
+            element={<OrganizerEventEditPage />}
+          />
+          <Route
+            path="/organizer/events/:id/announcements"
+            element={<OrganizerAnnouncementsPage />}
+          />
+          <Route path="/organizer/refunds" element={<OrganizerRefundsPage />} />
           <Route path="/organizers/:id" element={<OrganizerPublicPage />} />
           <Route path="/scanner" element={<ScannerPage />} />
+          <Route path="/admin/finance" element={<AdminFinancePage />} />
+          <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+          <Route path="/admin/marketing" element={<AdminMarketingPage />} />
         </Routes>
       </main>
     </div>

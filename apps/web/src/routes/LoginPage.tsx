@@ -12,11 +12,15 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <div className="text-center">
-        <h1 className="font-display text-2xl font-bold text-surface-50">Welcome back</h1>
+        <h1 className="font-display text-2xl font-bold text-surface-50">
+          Welcome back
+        </h1>
         <p className="mt-1 text-surface-400">Sign in to your Planzo account</p>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
       ) : null}
       <form
         className="card space-y-4"
@@ -56,10 +60,21 @@ export default function LoginPage() {
         <button type="submit" className="btn-primary w-full">
           Sign in
         </button>
+        <p className="text-center text-sm">
+          <Link
+            to="/forgot-password"
+            className="text-surface-400 hover:text-brand-300"
+          >
+            Forgot password?
+          </Link>
+        </p>
       </form>
       <p className="text-center text-sm text-surface-400">
         Don&apos;t have an account?{" "}
-        <Link className="font-medium text-brand-400 hover:text-brand-300" to="/register">
+        <Link
+          className="font-medium text-brand-400 hover:text-brand-300"
+          to="/register"
+        >
           Create account
         </Link>
       </p>

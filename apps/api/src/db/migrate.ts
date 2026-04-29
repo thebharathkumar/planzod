@@ -34,7 +34,9 @@ async function ensureMigrationsTable(): Promise<void> {
   `);
 }
 
-async function listMigrationFiles(direction: MigrationDirection): Promise<MigrationFile[]> {
+async function listMigrationFiles(
+  direction: MigrationDirection,
+): Promise<MigrationFile[]> {
   const entries = await fs.readdir(migrationsDir());
   return entries
     .map(parseMigrationFileName)
@@ -49,7 +51,9 @@ async function readSql(filePath: string): Promise<string> {
 
 export async function migrateUp(): Promise<void> {
   await ensureMigrationsTable();
-  const { rows } = await pool.query<{ name: string }>("SELECT name FROM schema_migrations");
+  const { rows } = await pool.query<{ name: string }>(
+    "SELECT name FROM schema_migrations",
+  );
   const applied = new Set(rows.map((r) => r.name));
 
   const ups = await listMigrationFiles("up");
@@ -60,7 +64,9 @@ export async function migrateUp(): Promise<void> {
     await pool.query("BEGIN");
     try {
       await pool.query(sql);
-      await pool.query("INSERT INTO schema_migrations(name) VALUES ($1)", [m.name]);
+      await pool.query("INSERT INTO schema_migrations(name) VALUES ($1)", [
+        m.name,
+      ]);
       await pool.query("COMMIT");
       // eslint-disable-next-line no-console
       console.log(`Applied ${m.name}`);
@@ -74,7 +80,7 @@ export async function migrateUp(): Promise<void> {
 export async function migrateDown(): Promise<void> {
   await ensureMigrationsTable();
   const { rows } = await pool.query<{ name: string }>(
-    "SELECT name FROM schema_migrations ORDER BY applied_at DESC LIMIT 1"
+    "SELECT name FROM schema_migrations ORDER BY applied_at DESC LIMIT 1",
   );
   const last = rows[0]?.name;
   if (!last) {
@@ -102,4 +108,3 @@ export async function migrateDown(): Promise<void> {
     throw err;
   }
 }
-

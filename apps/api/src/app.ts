@@ -18,10 +18,11 @@ export function createApp() {
     cors({
       origin: (origin, cb) => {
         const allowed = env.CORS_ORIGIN.split(",").map((o: string) => o.trim());
-        if (!origin || allowed.includes("*") || allowed.includes(origin)) return cb(null, true);
+        if (!origin || allowed.includes("*") || allowed.includes(origin))
+          return cb(null, true);
         return cb(null, false);
-      }
-    })
+      },
+    }),
   );
   app.use(helmet());
 
@@ -36,29 +37,36 @@ export function createApp() {
   app.use((_req, _res, next) => next(new HttpError(404, "Not Found")));
 
   // Error handler
-  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    if (isZodError(err)) {
-      return res.status(400).json({
-        error: "Bad Request",
-        message: "Validation failed",
-        details: err.flatten()
-      });
-    }
+  app.use(
+    (
+      err: unknown,
+      _req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction,
+    ) => {
+      if (isZodError(err)) {
+        return res.status(400).json({
+          error: "Bad Request",
+          message: "Validation failed",
+          details: err.flatten(),
+        });
+      }
 
-    if (err instanceof HttpError) {
-      return res.status(err.status).json({
-        error: err.status >= 500 ? "Internal Server Error" : "Error",
-        message: err.message,
-        details: err.details
-      });
-    }
+      if (err instanceof HttpError) {
+        return res.status(err.status).json({
+          error: err.status >= 500 ? "Internal Server Error" : "Error",
+          message: err.message,
+          details: err.details,
+        });
+      }
 
-    logger.error({ err }, "Unhandled error");
-    return res.status(500).json({
-      error: "Internal Server Error",
-      message: getErrorMessage(err)
-    });
-  });
+      logger.error({ err }, "Unhandled error");
+      return res.status(500).json({
+        error: "Internal Server Error",
+        message: getErrorMessage(err),
+      });
+    },
+  );
 
   return app;
 }

@@ -33,7 +33,12 @@
     color: var(--color-surface-100);
     background-color: var(--color-surface-950);
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
   }
 }
@@ -57,7 +62,9 @@
   }
   .btn-primary:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-surface-950), 0 0 0 4px var(--color-brand-500);
+    box-shadow:
+      0 0 0 2px var(--color-surface-950),
+      0 0 0 4px var(--color-brand-500);
   }
   .btn-primary:active {
     transform: scale(0.98);
@@ -82,7 +89,9 @@
   }
   .btn-secondary:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-surface-950), 0 0 0 4px var(--color-surface-600);
+    box-shadow:
+      0 0 0 2px var(--color-surface-950),
+      0 0 0 4px var(--color-surface-600);
   }
   .btn-secondary:active {
     transform: scale(0.98);
@@ -105,7 +114,9 @@
   }
   .btn-ghost:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-surface-950), 0 0 0 4px var(--color-surface-600);
+    box-shadow:
+      0 0 0 2px var(--color-surface-950),
+      0 0 0 4px var(--color-surface-600);
   }
 
   .card {
@@ -125,7 +136,9 @@
   }
   .card-hover:hover {
     border-color: var(--color-surface-700);
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.4),
+      0 4px 6px -4px rgb(0 0 0 / 0.3);
   }
 
   .input {

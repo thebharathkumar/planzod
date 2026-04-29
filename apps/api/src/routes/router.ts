@@ -11,6 +11,15 @@ import aiRouter from "./ai";
 import shareRouter from "./share";
 import waitlistRouter from "./waitlist";
 import emailRouter from "./emails";
+import accountRouter from "./account";
+import supportRouter from "./support";
+import refundsRouter from "./refunds";
+import eventReviewsRouter from "./eventReviews";
+import announcementsRouter from "./announcements";
+import campaignsRouter from "./campaigns";
+import recommendationsRouter from "./recommendations";
+import financeRouter from "./finance";
+import analyticsRouter from "./analytics";
 
 const router = Router();
 
@@ -28,5 +37,16 @@ router.use("/ai", aiRouter);
 router.use("/share", shareRouter);
 router.use("/waitlist", waitlistRouter);
 router.use("/emails", emailRouter);
+
+// New feature modules
+router.use("/account", accountRouter);
+router.use("/support", supportRouter);
+router.use("/refunds", refundsRouter);
+router.use(eventReviewsRouter); // mounts /events/:id/reviews
+router.use(announcementsRouter); // mounts /events/:id/announcements
+router.use("/campaigns", campaignsRouter);
+router.use(recommendationsRouter); // mounts /interactions and /recommendations
+router.use("/finance", financeRouter);
+router.use("/analytics", analyticsRouter);
 
 export default router;

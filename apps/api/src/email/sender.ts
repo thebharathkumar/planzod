@@ -5,7 +5,11 @@ function isSesConfigured() {
   return Boolean(env.EMAIL_FROM && env.SES_REGION);
 }
 
-export async function sendEmail(options: { to: string; subject: string; html: string }) {
+export async function sendEmail(options: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
   if (!isSesConfigured()) {
     throw new Error("SES is not configured");
   }
@@ -15,11 +19,10 @@ export async function sendEmail(options: { to: string; subject: string; html: st
     Destination: { ToAddresses: [options.to] },
     Message: {
       Subject: { Data: options.subject },
-      Body: { Html: { Data: options.html } }
+      Body: { Html: { Data: options.html } },
     },
-    Source: env.EMAIL_FROM
+    Source: env.EMAIL_FROM,
   });
 
   await client.send(command);
 }
-

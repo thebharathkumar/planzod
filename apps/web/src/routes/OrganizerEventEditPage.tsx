@@ -54,27 +54,38 @@ export default function OrganizerEventEditPage() {
   async function load() {
     if (!auth.user) return;
     setError(null);
-    const data = await auth.apiFetch<{ event: OrganizerEventDetail; ticketTiers: TicketTier[] }>(`/organizer/events/${id}`);
+    const data = await auth.apiFetch<{
+      event: OrganizerEventDetail;
+      ticketTiers: TicketTier[];
+    }>(`/organizer/events/${id}`);
     setEvent(data.event);
     setTiers(data.ticketTiers ?? []);
   }
 
   useEffect(() => {
-    load().catch((err: any) => setError(err?.message ?? "Failed to load event"));
+    load().catch((err: any) =>
+      setError(err?.message ?? "Failed to load event"),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.user?.id, id]);
 
   if (!auth.user) {
     return (
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
-        Please <Link className="underline" to="/login">login</Link> to edit events.
+        Please{" "}
+        <Link className="underline" to="/login">
+          login
+        </Link>{" "}
+        to edit events.
       </div>
     );
   }
 
   if (!event) {
     return error ? (
-      <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">{error}</div>
+      <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">
+        {error}
+      </div>
     ) : (
       <div className="text-sm text-neutral-300">Loading…</div>
     );
@@ -90,24 +101,36 @@ export default function OrganizerEventEditPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm hover:bg-neutral-800/60" to="/organizer">
+          <Link
+            className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm hover:bg-neutral-800/60"
+            to="/organizer"
+          >
             Back
           </Link>
           {event.status === "published" ? (
-            <Link className="rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/15" to={`/events/${event.id}`}>
+            <Link
+              className="rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
+              to={`/events/${event.id}`}
+            >
               View public
             </Link>
           ) : null}
         </div>
       </div>
 
-      {error ? <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">{error}</div> : null}
+      {error ? (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">
+          {error}
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold">AI Event Studio</div>
-            <div className="text-xs text-neutral-400">Rewrite description + generate tags and tier ideas.</div>
+            <div className="text-xs text-neutral-400">
+              Rewrite description + generate tags and tier ideas.
+            </div>
           </div>
           <button
             type="button"
@@ -129,28 +152,37 @@ export default function OrganizerEventEditPage() {
                     title: event.title,
                     category: event.category,
                     audience: "local attendees",
-                    lengthMinutes: 120
-                  })
+                    lengthMinutes: 120,
+                  }),
                 });
-                setEvent({ ...event, description: copy.description, category: copy.suggestedCategory as any });
+                setEvent({
+                  ...event,
+                  description: copy.description,
+                  category: copy.suggestedCategory as any,
+                });
 
-                const tiers = await auth.apiFetch<{ tiers: { name: string; priceCents: number; qty: number }[] }>(
-                  "/ai/ticket-tiers",
-                  {
-                    method: "POST",
-                    body: JSON.stringify({ seed: event.title })
-                  }
-                );
+                const tiers = await auth.apiFetch<{
+                  tiers: { name: string; priceCents: number; qty: number }[];
+                }>("/ai/ticket-tiers", {
+                  method: "POST",
+                  body: JSON.stringify({ seed: event.title }),
+                });
                 if (tiers.tiers?.[0]) {
                   setTierName(tiers.tiers[0].name);
                   setTierPrice(tiers.tiers[0].priceCents / 100);
                   setTierQty(tiers.tiers[0].qty);
                 }
 
-                const rewrites = await auth.apiFetch<{ variants: string[] }>("/ai/event-title-rewrite", {
-                  method: "POST",
-                  body: JSON.stringify({ title: event.title, vibe: "Premium" })
-                });
+                const rewrites = await auth.apiFetch<{ variants: string[] }>(
+                  "/ai/event-title-rewrite",
+                  {
+                    method: "POST",
+                    body: JSON.stringify({
+                      title: event.title,
+                      vibe: "Premium",
+                    }),
+                  },
+                );
                 setTitleVariants(rewrites.variants ?? []);
               } catch (err: any) {
                 setError(err?.message ?? "AI generation failed");
@@ -200,10 +232,13 @@ export default function OrganizerEventEditPage() {
                 address: event.venue_address ?? "",
                 placeId: event.venue_place_id ?? "",
                 lat: event.lat,
-                lng: event.lng
-              }
+                lng: event.lng,
+              },
             };
-            await auth.apiFetch(`/events/${event.id}`, { method: "PUT", body: JSON.stringify(payload) });
+            await auth.apiFetch(`/events/${event.id}`, {
+              method: "PUT",
+              body: JSON.stringify(payload),
+            });
             await load();
           } catch (err: any) {
             setError(err?.message ?? "Failed to save event");
@@ -241,7 +276,12 @@ export default function OrganizerEventEditPage() {
               className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2"
               type="datetime-local"
               value={toLocalDatetimeInput(event.starts_at)}
-              onChange={(e) => setEvent({ ...event, starts_at: new Date(e.target.value).toISOString() })}
+              onChange={(e) =>
+                setEvent({
+                  ...event,
+                  starts_at: new Date(e.target.value).toISOString(),
+                })
+              }
             />
           </label>
           <label className="block text-sm">
@@ -250,7 +290,12 @@ export default function OrganizerEventEditPage() {
               className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2"
               type="datetime-local"
               value={toLocalDatetimeInput(event.ends_at)}
-              onChange={(e) => setEvent({ ...event, ends_at: new Date(e.target.value).toISOString() })}
+              onChange={(e) =>
+                setEvent({
+                  ...event,
+                  ends_at: new Date(e.target.value).toISOString(),
+                })
+              }
             />
           </label>
         </div>
@@ -261,7 +306,9 @@ export default function OrganizerEventEditPage() {
             className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2"
             rows={5}
             value={event.description}
-            onChange={(e) => setEvent({ ...event, description: e.target.value })}
+            onChange={(e) =>
+              setEvent({ ...event, description: e.target.value })
+            }
           />
         </label>
 
@@ -273,7 +320,9 @@ export default function OrganizerEventEditPage() {
               <input
                 className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2"
                 value={event.venue_name}
-                onChange={(e) => setEvent({ ...event, venue_name: e.target.value })}
+                onChange={(e) =>
+                  setEvent({ ...event, venue_name: e.target.value })
+                }
               />
             </label>
             <label className="block text-sm sm:col-span-2">
@@ -281,7 +330,9 @@ export default function OrganizerEventEditPage() {
               <input
                 className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2"
                 value={event.venue_address ?? ""}
-                onChange={(e) => setEvent({ ...event, venue_address: e.target.value })}
+                onChange={(e) =>
+                  setEvent({ ...event, venue_address: e.target.value })
+                }
               />
             </label>
             <label className="block text-sm">
@@ -291,7 +342,9 @@ export default function OrganizerEventEditPage() {
                 type="number"
                 step="0.000001"
                 value={event.lat}
-                onChange={(e) => setEvent({ ...event, lat: Number(e.target.value) })}
+                onChange={(e) =>
+                  setEvent({ ...event, lat: Number(e.target.value) })
+                }
               />
             </label>
             <label className="block text-sm">
@@ -301,7 +354,9 @@ export default function OrganizerEventEditPage() {
                 type="number"
                 step="0.000001"
                 value={event.lng}
-                onChange={(e) => setEvent({ ...event, lng: Number(e.target.value) })}
+                onChange={(e) =>
+                  setEvent({ ...event, lng: Number(e.target.value) })
+                }
               />
             </label>
           </div>
@@ -324,11 +379,15 @@ export default function OrganizerEventEditPage() {
 
         <ul className="mt-3 space-y-2">
           {tiers.map((t) => (
-            <li key={t.id} className="flex items-center justify-between gap-3 rounded-md border border-neutral-800 p-3">
+            <li
+              key={t.id}
+              className="flex items-center justify-between gap-3 rounded-md border border-neutral-800 p-3"
+            >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium">{t.name}</div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  ${(t.price_cents / 100).toFixed(2)} • {t.remaining_qty}/{t.total_qty} remaining
+                  ${(t.price_cents / 100).toFixed(2)} • {t.remaining_qty}/
+                  {t.total_qty} remaining
                 </div>
               </div>
               <button
@@ -336,7 +395,9 @@ export default function OrganizerEventEditPage() {
                 className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm hover:bg-neutral-800/60"
                 onClick={async () => {
                   if (!confirm("Delete this tier?")) return;
-                  await auth.apiFetch(`/ticket-tiers/${t.id}`, { method: "DELETE" });
+                  await auth.apiFetch(`/ticket-tiers/${t.id}`, {
+                    method: "DELETE",
+                  });
                   await load();
                 }}
               >
@@ -358,8 +419,8 @@ export default function OrganizerEventEditPage() {
                   name: tierName,
                   priceCents: Math.round(tierPrice * 100),
                   currency: "usd",
-                  totalQty: tierQty
-                })
+                  totalQty: tierQty,
+                }),
               });
               setTierName("");
               setTierPrice(0);
@@ -403,7 +464,10 @@ export default function OrganizerEventEditPage() {
             />
           </label>
           <div className="sm:col-span-1 sm:pt-6">
-            <button className="w-full rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/15" type="submit">
+            <button
+              className="w-full rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/15"
+              type="submit"
+            >
               Add
             </button>
           </div>
@@ -417,7 +481,9 @@ export default function OrganizerEventEditPage() {
               onClick={async () => {
                 setError(null);
                 try {
-                  await auth.apiFetch(`/events/${event.id}/publish`, { method: "POST" });
+                  await auth.apiFetch(`/events/${event.id}/publish`, {
+                    method: "POST",
+                  });
                   await load();
                 } catch (err: any) {
                   setError(err?.message ?? "Publish failed");
@@ -433,7 +499,9 @@ export default function OrganizerEventEditPage() {
             onClick={async () => {
               setError(null);
               try {
-                await auth.apiFetch(`/events/${event.id}/cancel`, { method: "POST" });
+                await auth.apiFetch(`/events/${event.id}/cancel`, {
+                  method: "POST",
+                });
                 await load();
               } catch (err: any) {
                 setError(err?.message ?? "Cancel failed");

@@ -3,6 +3,7 @@ import { GoogleMap, MarkerF, useLoadScript } from "@react-google-maps/api";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from "../lib/env";
+import Recommendations from "../components/Recommendations";
 
 type SearchResult = {
   id: string;
@@ -35,7 +36,9 @@ function formatPrice(r: SearchResult) {
 }
 
 export default function HomePage() {
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
   const [radiusKm, setRadiusKm] = useState(10);
   const [category, setCategory] = useState<string>("");
   const [price, setPrice] = useState<"any" | "free" | "paid">("any");
@@ -53,10 +56,10 @@ export default function HomePage() {
   const { isLoaded } = useLoadScript(
     useMemo(
       () => ({
-        googleMapsApiKey: GOOGLE_MAPS_API_KEY
+        googleMapsApiKey: GOOGLE_MAPS_API_KEY,
       }),
-      []
-    )
+      [],
+    ),
   );
 
   async function fetchResults(loc: { lat: number; lng: number }) {
@@ -69,16 +72,19 @@ export default function HomePage() {
         lat: String(loc.lat),
         lng: String(loc.lng),
         radiusKm: String(radiusKm),
-        price
+        price,
       });
       if (category) params.set("category", category);
       if (startingSoon) {
         params.set("from", now.toISOString());
         params.set("to", soonEnd.toISOString());
       }
-      const res = await fetch(`${API_BASE_URL}/search/events?${params.toString()}`, {
-        headers: { accept: "application/json" }
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/search/events?${params.toString()}`,
+        {
+          headers: { accept: "application/json" },
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message ?? "Search failed");
       setResults(data.results ?? []);
@@ -98,15 +104,19 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      <Recommendations />
       {/* Hero + AI Concierge */}
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="card overflow-hidden bg-gradient-to-br from-surface-900 via-surface-900 to-surface-950">
-          <div className="text-xs font-semibold uppercase tracking-wider text-brand-500">Planzo AI Concierge</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-brand-500">
+            Planzo AI Concierge
+          </div>
           <h1 className="mt-2 font-display text-3xl font-bold leading-tight text-surface-50 sm:text-4xl">
             Find events that match your vibe
           </h1>
           <p className="mt-2 text-base text-surface-400">
-            Personalized discovery with map-first context, smart filters, and AI-guided suggestions.
+            Personalized discovery with map-first context, smart filters, and
+            AI-guided suggestions.
           </p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <input
@@ -122,7 +132,7 @@ export default function HomePage() {
                 const ideas = [
                   `Top picks for: ${aiPrompt}`,
                   `Trending for ${persona}s: Local Creative Lab, Neighborhood Fitness Pop‑Up`,
-                  `Suggested filters: 5km radius • ${timeWindow} • ${budget}`
+                  `Suggested filters: 5km radius • ${timeWindow} • ${budget}`,
                 ];
                 setAiSuggestions(ideas);
               }}
@@ -132,8 +142,14 @@ export default function HomePage() {
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <label className="block">
-              <span className="text-xs font-medium text-surface-500">Persona</span>
-              <select className="input mt-1" value={persona} onChange={(e) => setPersona(e.target.value)}>
+              <span className="text-xs font-medium text-surface-500">
+                Persona
+              </span>
+              <select
+                className="input mt-1"
+                value={persona}
+                onChange={(e) => setPersona(e.target.value)}
+              >
                 <option>Creator</option>
                 <option>Student</option>
                 <option>Founder</option>
@@ -142,8 +158,14 @@ export default function HomePage() {
               </select>
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-surface-500">Time window</span>
-              <select className="input mt-1" value={timeWindow} onChange={(e) => setTimeWindow(e.target.value)}>
+              <span className="text-xs font-medium text-surface-500">
+                Time window
+              </span>
+              <select
+                className="input mt-1"
+                value={timeWindow}
+                onChange={(e) => setTimeWindow(e.target.value)}
+              >
                 <option>Tonight</option>
                 <option>Tomorrow</option>
                 <option>This weekend</option>
@@ -151,8 +173,14 @@ export default function HomePage() {
               </select>
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-surface-500">Budget</span>
-              <select className="input mt-1" value={budget} onChange={(e) => setBudget(e.target.value)}>
+              <span className="text-xs font-medium text-surface-500">
+                Budget
+              </span>
+              <select
+                className="input mt-1"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+              >
                 <option>Under $30</option>
                 <option>Under $50</option>
                 <option>Free only</option>
@@ -173,7 +201,9 @@ export default function HomePage() {
         </div>
 
         <div className="card flex flex-col">
-          <h2 className="font-display text-lg font-semibold text-surface-50">Quick actions</h2>
+          <h2 className="font-display text-lg font-semibold text-surface-50">
+            Quick actions
+          </h2>
           <div className="mt-4 flex flex-1 flex-col gap-3">
             <button
               type="button"
@@ -181,9 +211,16 @@ export default function HomePage() {
               onClick={() => {
                 setError(null);
                 navigator.geolocation.getCurrentPosition(
-                  (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                  () => setError("Location permission denied. Enter coordinates manually below."),
-                  { enableHighAccuracy: true, timeout: 8000 }
+                  (pos) =>
+                    setLocation({
+                      lat: pos.coords.latitude,
+                      lng: pos.coords.longitude,
+                    }),
+                  () =>
+                    setError(
+                      "Location permission denied. Enter coordinates manually below.",
+                    ),
+                  { enableHighAccuracy: true, timeout: 8000 },
                 );
               }}
             >
@@ -211,7 +248,9 @@ export default function HomePage() {
         <div className="text-sm font-semibold text-surface-200">Filters</div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <label className="block">
-            <span className="text-xs font-medium text-surface-500">Radius (km)</span>
+            <span className="text-xs font-medium text-surface-500">
+              Radius (km)
+            </span>
             <input
               className="input mt-1"
               type="number"
@@ -222,8 +261,14 @@ export default function HomePage() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-surface-500">Category</span>
-            <select className="input mt-1" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <span className="text-xs font-medium text-surface-500">
+              Category
+            </span>
+            <select
+              className="input mt-1"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
               <option value="">Any</option>
               {EVENT_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -234,7 +279,13 @@ export default function HomePage() {
           </label>
           <label className="block">
             <span className="text-xs font-medium text-surface-500">Price</span>
-            <select className="input mt-1" value={price} onChange={(e) => setPrice(e.target.value as "any" | "free" | "paid")}>
+            <select
+              className="input mt-1"
+              value={price}
+              onChange={(e) =>
+                setPrice(e.target.value as "any" | "free" | "paid")
+              }
+            >
               <option value="any">Any</option>
               <option value="free">Free</option>
               <option value="paid">Paid</option>
@@ -250,30 +301,42 @@ export default function HomePage() {
             <span className="text-sm text-surface-300">Starting soon (6h)</span>
           </label>
           <div className="flex flex-col justify-center rounded-xl border border-surface-700 bg-surface-900/50 px-4 py-2.5">
-            <span className="text-xs font-medium text-surface-500">Location</span>
+            <span className="text-xs font-medium text-surface-500">
+              Location
+            </span>
             <span className="text-sm font-medium text-surface-200">
-              {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Not set"}
+              {location
+                ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`
+                : "Not set"}
             </span>
           </div>
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
       ) : null}
 
       {/* Results + Map */}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold text-surface-50">Results</h2>
-            <span className="text-sm text-surface-500">{loading ? "Searching…" : `${results.length} events`}</span>
+            <h2 className="font-display text-xl font-semibold text-surface-50">
+              Results
+            </h2>
+            <span className="text-sm text-surface-500">
+              {loading ? "Searching…" : `${results.length} events`}
+            </span>
           </div>
 
           {results.length === 0 ? (
             <div className="card flex flex-col items-center justify-center py-12 text-center">
               <p className="text-surface-400">
-                {location ? "No events found in this area yet." : "Set your location to search."}
+                {location
+                  ? "No events found in this area yet."
+                  : "Set your location to search."}
               </p>
               {!location && (
                 <button
@@ -281,9 +344,13 @@ export default function HomePage() {
                   className="btn-primary mt-4"
                   onClick={() => {
                     navigator.geolocation.getCurrentPosition(
-                      (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                      (pos) =>
+                        setLocation({
+                          lat: pos.coords.latitude,
+                          lng: pos.coords.longitude,
+                        }),
                       () => setError("Location permission denied."),
-                      { enableHighAccuracy: true, timeout: 8000 }
+                      { enableHighAccuracy: true, timeout: 8000 },
                     );
                   }}
                 >
@@ -311,7 +378,9 @@ export default function HomePage() {
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <span className="badge">{r.category}</span>
                           <span className="badge-brand">{formatPrice(r)}</span>
-                          <span className="badge">{formatDistance(r.distance_m)}</span>
+                          <span className="badge">
+                            {formatDistance(r.distance_m)}
+                          </span>
                         </div>
                       </div>
                       <div className="text-right text-xs text-surface-500">
@@ -320,7 +389,7 @@ export default function HomePage() {
                           month: "short",
                           day: "numeric",
                           hour: "numeric",
-                          minute: "2-digit"
+                          minute: "2-digit",
                         })}
                       </div>
                     </div>
@@ -334,16 +403,31 @@ export default function HomePage() {
         <div className="card overflow-hidden p-0">
           {!hasMaps ? (
             <div className="flex h-[400px] items-center justify-center p-6 text-center text-sm text-surface-400 sm:h-[520px]">
-              Map disabled. Set <code className="rounded bg-surface-800 px-1.5 py-0.5">VITE_GOOGLE_MAPS_API_KEY</code> in{" "}
-              <code className="rounded bg-surface-800 px-1.5 py-0.5">apps/web/.env</code> to enable.
+              Map disabled. Set{" "}
+              <code className="rounded bg-surface-800 px-1.5 py-0.5">
+                VITE_GOOGLE_MAPS_API_KEY
+              </code>{" "}
+              in{" "}
+              <code className="rounded bg-surface-800 px-1.5 py-0.5">
+                apps/web/.env
+              </code>{" "}
+              to enable.
             </div>
           ) : !isLoaded ? (
-            <div className="flex h-[400px] items-center justify-center text-surface-500 sm:h-[520px]">Loading map…</div>
+            <div className="flex h-[400px] items-center justify-center text-surface-500 sm:h-[520px]">
+              Loading map…
+            </div>
           ) : !location ? (
-            <div className="flex h-[400px] items-center justify-center text-surface-500 sm:h-[520px]">Set your location to view the map.</div>
+            <div className="flex h-[400px] items-center justify-center text-surface-500 sm:h-[520px]">
+              Set your location to view the map.
+            </div>
           ) : (
             <GoogleMap
-              mapContainerStyle={{ width: "100%", height: 520, borderRadius: 12 }}
+              mapContainerStyle={{
+                width: "100%",
+                height: 520,
+                borderRadius: 12,
+              }}
               center={location}
               zoom={12}
               options={{
@@ -351,11 +435,17 @@ export default function HomePage() {
                 zoomControl: true,
                 styles: [
                   { elementType: "geometry", stylers: [{ color: "#0a0a0a" }] },
-                  { elementType: "labels.text.stroke", stylers: [{ color: "#0a0a0a" }] },
-                  { elementType: "labels.text.fill", stylers: [{ color: "#737373" }] },
+                  {
+                    elementType: "labels.text.stroke",
+                    stylers: [{ color: "#0a0a0a" }],
+                  },
+                  {
+                    elementType: "labels.text.fill",
+                    stylers: [{ color: "#737373" }],
+                  },
                   { featureType: "poi", stylers: [{ visibility: "off" }] },
-                  { featureType: "transit", stylers: [{ visibility: "off" }] }
-                ]
+                  { featureType: "transit", stylers: [{ visibility: "off" }] },
+                ],
               }}
             >
               <MarkerF position={location} />

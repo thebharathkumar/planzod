@@ -8,15 +8,20 @@ const router = Router();
 
 router.get("/me", requireAuth, async (req, res) => {
   const userId = req.user!.id;
-  const { rows } = await pool.query<{ id: string; user_id: string; display_name: string; created_at: string }>(
+  const { rows } = await pool.query<{
+    id: string;
+    user_id: string;
+    display_name: string;
+    created_at: string;
+  }>(
     "SELECT id, user_id, display_name, created_at FROM organizers WHERE user_id = $1",
-    [userId]
+    [userId],
   );
   res.json({ organizer: rows[0] ?? null });
 });
 
 const profileSchema = z.object({
-  displayName: z.string().min(2).max(80)
+  displayName: z.string().min(2).max(80),
 });
 
 router.post("/profile", requireAuth, async (req, res) => {
@@ -25,40 +30,60 @@ router.post("/profile", requireAuth, async (req, res) => {
 
   await pool.query("BEGIN");
   try {
-    const existing = await pool.query<{ id: string }>("SELECT id FROM organizers WHERE user_id = $1", [userId]);
+    const existing = await pool.query<{ id: string }>(
+      "SELECT id FROM organizers WHERE user_id = $1",
+      [userId],
+    );
     let organizerId: string;
 
     if (existing.rows[0]?.id) {
       organizerId = existing.rows[0].id;
-      await pool.query("UPDATE organizers SET display_name = $1 WHERE id = $2", [body.displayName, organizerId]);
+      await pool.query(
+        "UPDATE organizers SET display_name = $1 WHERE id = $2",
+        [body.displayName, organizerId],
+      );
     } else {
       const { rows } = await pool.query<{ id: string }>(
         "INSERT INTO organizers(user_id, display_name) VALUES ($1, $2) RETURNING id",
-        [userId, body.displayName]
+        [userId, body.displayName],
       );
       organizerId = rows[0].id;
     }
 
-    await pool.query("UPDATE users SET role = 'organizer' WHERE id = $1", [userId]);
+    await pool.query("UPDATE users SET role = 'organizer' WHERE id = $1", [
+      userId,
+    ]);
     await pool.query(
       "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1, $2, $3, $4, $5)",
-      [userId, "organizer.profile.upsert", "organizer", organizerId, JSON.stringify({ displayName: body.displayName })]
+      [
+        userId,
+        "organizer.profile.upsert",
+        "organizer",
+        organizerId,
+        JSON.stringify({ displayName: body.displayName }),
+      ],
     );
 
     await pool.query("COMMIT");
-    res.status(201).json({ organizer: { id: organizerId, userId, displayName: body.displayName } });
+    res.status(201).json({
+      organizer: { id: organizerId, userId, displayName: body.displayName },
+    });
   } catch (err) {
     await pool.query("ROLLBACK");
     throw err;
   }
 });
 
-router.get("/events", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
+router.get(
+  "/events",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
 
-  const { rows } = await pool.query(
-    `
+    const { rows } = await pool.query(
+      `
       SELECT
         e.id,
         e.title,
@@ -74,19 +99,24 @@ router.get("/events", requireAuth, requireRole(["organizer", "admin"]), async (r
       ORDER BY e.created_at DESC
       LIMIT 100
     `,
-    [organizerId]
-  );
+      [organizerId],
+    );
 
-  res.json({ events: rows });
-});
+    res.json({ events: rows });
+  },
+);
 
-router.get("/events/:eventId", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
-  const eventId = z.string().uuid().parse(req.params.eventId);
+router.get(
+  "/events/:eventId",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
+    const eventId = z.string().uuid().parse(req.params.eventId);
 
-  const eventRes = await pool.query(
-    `
+    const eventRes = await pool.query(
+      `
       SELECT
         e.id,
         e.title,
@@ -106,30 +136,34 @@ router.get("/events/:eventId", requireAuth, requireRole(["organizer", "admin"]),
       JOIN venues v ON v.id = e.venue_id
       WHERE e.id = $1 AND e.organizer_id = $2
     `,
-    [eventId, organizerId]
-  );
-  const event = eventRes.rows[0];
-  if (!event) throw new HttpError(404, "Event not found");
+      [eventId, organizerId],
+    );
+    const event = eventRes.rows[0];
+    if (!event) throw new HttpError(404, "Event not found");
 
-  const tiers = await pool.query(
-    `
+    const tiers = await pool.query(
+      `
       SELECT id, name, price_cents, currency, total_qty, remaining_qty, sales_start, sales_end
       FROM ticket_tiers
       WHERE event_id = $1
       ORDER BY price_cents ASC, name ASC
     `,
-    [eventId]
-  );
+      [eventId],
+    );
 
-  res.json({ event, ticketTiers: tiers.rows });
-});
+    res.json({ event, ticketTiers: tiers.rows });
+  },
+);
 
 router.get("/public/:organizerId", async (req, res) => {
   const organizerId = z.string().uuid().parse(req.params.organizerId);
-  const orgRes = await pool.query<{ id: string; display_name: string; created_at: string }>(
-    "SELECT id, display_name, created_at FROM organizers WHERE id = $1",
-    [organizerId]
-  );
+  const orgRes = await pool.query<{
+    id: string;
+    display_name: string;
+    created_at: string;
+  }>("SELECT id, display_name, created_at FROM organizers WHERE id = $1", [
+    organizerId,
+  ]);
   const organizer = orgRes.rows[0];
   if (!organizer) throw new HttpError(404, "Organizer not found");
 
@@ -153,7 +187,7 @@ router.get("/public/:organizerId", async (req, res) => {
       FROM organizer_reviews r
       WHERE r.organizer_id = $1
     `,
-    [organizerId]
+    [organizerId],
   );
 
   const eventsRes = await pool.query(
@@ -173,20 +207,24 @@ router.get("/public/:organizerId", async (req, res) => {
       ORDER BY e.starts_at ASC
       LIMIT 50
     `,
-    [organizerId]
+    [organizerId],
   );
 
   res.json({
     organizer,
-    stats: ratingRes.rows[0] ?? { avg_rating: null, review_count: 0, verified: false },
-    events: eventsRes.rows
+    stats: ratingRes.rows[0] ?? {
+      avg_rating: null,
+      review_count: 0,
+      verified: false,
+    },
+    events: eventsRes.rows,
   });
 });
 
 const reviewSchema = z.object({
   eventId: z.string().uuid(),
   rating: z.number().int().min(1).max(5),
-  comment: z.string().max(500).optional()
+  comment: z.string().max(500).optional(),
 });
 
 router.post("/public/:organizerId/reviews", requireAuth, async (req, res) => {
@@ -205,9 +243,10 @@ router.post("/public/:organizerId/reviews", requireAuth, async (req, res) => {
         AND t.status = 'issued'
       LIMIT 1
     `,
-    [userId, body.eventId, organizerId]
+    [userId, body.eventId, organizerId],
   );
-  if (eligible.rowCount !== 1) throw new HttpError(403, "Only attendees can review this organizer");
+  if (eligible.rowCount !== 1)
+    throw new HttpError(403, "Only attendees can review this organizer");
 
   try {
     await pool.query(
@@ -215,29 +254,34 @@ router.post("/public/:organizerId/reviews", requireAuth, async (req, res) => {
         INSERT INTO organizer_reviews(organizer_id, event_id, user_id, rating, comment)
         VALUES ($1,$2,$3,$4,$5)
       `,
-      [organizerId, body.eventId, userId, body.rating, body.comment ?? null]
+      [organizerId, body.eventId, userId, body.rating, body.comment ?? null],
     );
   } catch (err: any) {
-    if (err?.code === "23505") throw new HttpError(409, "Review already submitted");
+    if (err?.code === "23505")
+      throw new HttpError(409, "Review already submitted");
     throw err;
   }
 
   res.status(201).json({ ok: true });
 });
 
-router.get("/metrics", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
+router.get(
+  "/metrics",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
 
-  const { rows } = await pool.query<{
-    events_count: number;
-    tickets_sold: number | null;
-    revenue_cents: number | null;
-    checkins: number | null;
-    avg_rating: number | null;
-    review_count: number | null;
-  }>(
-    `
+    const { rows } = await pool.query<{
+      events_count: number;
+      tickets_sold: number | null;
+      revenue_cents: number | null;
+      checkins: number | null;
+      avg_rating: number | null;
+      review_count: number | null;
+    }>(
+      `
       WITH organizer_events AS (
         SELECT id FROM events WHERE organizer_id = $1
       ),
@@ -272,31 +316,35 @@ router.get("/metrics", requireAuth, requireRole(["organizer", "admin"]), async (
         (SELECT avg_rating FROM ratings) AS avg_rating,
         (SELECT review_count FROM ratings) AS review_count
     `,
-    [organizerId]
-  );
+      [organizerId],
+    );
 
-  const metrics = rows[0] ?? {
-    events_count: 0,
-    tickets_sold: 0,
-    revenue_cents: 0,
-    checkins: 0
-  };
+    const metrics = rows[0] ?? {
+      events_count: 0,
+      tickets_sold: 0,
+      revenue_cents: 0,
+      checkins: 0,
+    };
 
-  const avgTicketPriceCents =
-    metrics.tickets_sold && metrics.tickets_sold > 0
-      ? Math.round((metrics.revenue_cents ?? 0) / metrics.tickets_sold)
-      : 0;
+    const avgTicketPriceCents =
+      metrics.tickets_sold && metrics.tickets_sold > 0
+        ? Math.round((metrics.revenue_cents ?? 0) / metrics.tickets_sold)
+        : 0;
 
-  res.json({
-    metrics: {
-      ...metrics,
-      avg_ticket_price_cents: avgTicketPriceCents
-    }
-  });
-});
+    res.json({
+      metrics: {
+        ...metrics,
+        avg_ticket_price_cents: avgTicketPriceCents,
+      },
+    });
+  },
+);
 
 export async function requireOrganizerId(userId: string): Promise<string> {
-  const { rows } = await pool.query<{ id: string }>("SELECT id FROM organizers WHERE user_id = $1", [userId]);
+  const { rows } = await pool.query<{ id: string }>(
+    "SELECT id FROM organizers WHERE user_id = $1",
+    [userId],
+  );
   const organizer = rows[0];
   if (!organizer) throw new HttpError(403, "Organizer profile required");
   return organizer.id;

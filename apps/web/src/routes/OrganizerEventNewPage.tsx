@@ -12,7 +12,8 @@ export default function OrganizerEventNewPage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<(typeof EVENT_CATEGORIES)[number]>("other");
+  const [category, setCategory] =
+    useState<(typeof EVENT_CATEGORIES)[number]>("other");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
 
@@ -21,7 +22,9 @@ export default function OrganizerEventNewPage() {
   const [lat, setLat] = useState<number>(0);
   const [lng, setLng] = useState<number>(0);
   const [aiTags, setAiTags] = useState<string[]>([]);
-  const [aiAgenda, setAiAgenda] = useState<{ time: string; item: string }[]>([]);
+  const [aiAgenda, setAiAgenda] = useState<{ time: string; item: string }[]>(
+    [],
+  );
   const [aiFaqs, setAiFaqs] = useState<{ q: string; a: string }[]>([]);
 
   useEffect(() => {
@@ -32,14 +35,18 @@ export default function OrganizerEventNewPage() {
         setLng(pos.coords.longitude);
       },
       () => {},
-      { enableHighAccuracy: true, timeout: 4000 }
+      { enableHighAccuracy: true, timeout: 4000 },
     );
   }, [auth.user]);
 
   if (!auth.user) {
     return (
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
-        Please <Link className="underline" to="/login">login</Link> to create events.
+        Please{" "}
+        <Link className="underline" to="/login">
+          login
+        </Link>{" "}
+        to create events.
       </div>
     );
   }
@@ -48,18 +55,27 @@ export default function OrganizerEventNewPage() {
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Create event</h1>
-        <Link className="text-sm text-neutral-200 underline hover:text-white" to="/organizer">
+        <Link
+          className="text-sm text-neutral-200 underline hover:text-white"
+          to="/organizer"
+        >
           Back
         </Link>
       </div>
 
-      {error ? <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">{error}</div> : null}
+      {error ? (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">
+          {error}
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold">AI Event Studio</div>
-            <div className="text-xs text-neutral-400">Instant copy, tags, agenda, and tier ideas.</div>
+            <div className="text-xs text-neutral-400">
+              Instant copy, tags, agenda, and tier ideas.
+            </div>
           </div>
           <button
             type="button"
@@ -85,8 +101,8 @@ export default function OrganizerEventNewPage() {
                     title,
                     category,
                     audience: "local attendees",
-                    lengthMinutes: 120
-                  })
+                    lengthMinutes: 120,
+                  }),
                 });
                 setDescription(copy.description);
                 if (EVENT_CATEGORIES.includes(copy.suggestedCategory as any)) {
@@ -135,12 +151,12 @@ export default function OrganizerEventNewPage() {
                 address: venueAddress,
                 placeId: "",
                 lat,
-                lng
-              }
+                lng,
+              },
             };
             const data = await auth.apiFetch<{ eventId: string }>("/events", {
               method: "POST",
-              body: JSON.stringify(payload)
+              body: JSON.stringify(payload),
             });
             navigate(`/organizer/events/${data.eventId}/edit`);
           } catch (err: any) {
@@ -271,7 +287,8 @@ export default function OrganizerEventNewPage() {
               <ul className="mt-2 space-y-1 text-sm text-neutral-300">
                 {aiAgenda.map((a, idx) => (
                   <li key={`${a.time}-${idx}`}>
-                    <span className="text-neutral-400">{a.time}</span> — {a.item}
+                    <span className="text-neutral-400">{a.time}</span> —{" "}
+                    {a.item}
                   </li>
                 ))}
               </ul>

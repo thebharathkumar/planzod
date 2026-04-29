@@ -11,11 +11,15 @@ function createSeededRandom(seed: string): SeededRandom {
   };
 }
 
-function pick<T>(rand: SeededRandom, list: T[]): T {
+function pick<T>(rand: SeededRandom, list: readonly T[]): T {
   return list[Math.floor(rand() * list.length)];
 }
 
-function pickMany<T>(rand: SeededRandom, list: T[], count: number): T[] {
+function pickMany<T>(
+  rand: SeededRandom,
+  list: readonly T[],
+  count: number,
+): T[] {
   const copy = [...list];
   const out: T[] = [];
   while (copy.length && out.length < count) {
@@ -35,7 +39,7 @@ const TAGS = [
   "Local spotlight",
   "Community-powered",
   "Expert-led",
-  "After-hours"
+  "After-hours",
 ];
 
 const THEMES = [
@@ -48,21 +52,21 @@ const THEMES = [
   "food",
   "entrepreneurship",
   "design",
-  "community"
+  "community",
 ];
 
 const OPENERS = [
   "Join us for an immersive experience that blends learning, connection, and fun.",
   "An intimate gathering crafted for curious minds and local community builders.",
   "A high‑energy session built to help you level up quickly.",
-  "A relaxed, hands‑on event where you can learn by doing."
+  "A relaxed, hands‑on event where you can learn by doing.",
 ];
 
 const DESCRIPTIONS = [
   "Expect guided activities, small-group collaboration, and time to meet fellow attendees.",
   "We’ll move fast, but keep things approachable with structured checkpoints and helpers on hand.",
   "Bring your questions—this is designed to be interactive from start to finish.",
-  "You’ll leave with practical takeaways, fresh contacts, and a plan for what’s next."
+  "You’ll leave with practical takeaways, fresh contacts, and a plan for what’s next.",
 ];
 
 const OUTCOMES = [
@@ -71,26 +75,26 @@ const OUTCOMES = [
   "a set of practical skills",
   "hands‑on practice",
   "confidence to keep going",
-  "templates you can reuse"
+  "templates you can reuse",
 ];
 
 const FAQS = [
   {
     q: "Who is this for?",
-    a: "Anyone interested in learning something new and meeting people nearby. No prior experience required."
+    a: "Anyone interested in learning something new and meeting people nearby. No prior experience required.",
   },
   {
     q: "What should I bring?",
-    a: "A laptop if you want to follow along, plus a positive attitude. We’ll provide the rest."
+    a: "A laptop if you want to follow along, plus a positive attitude. We’ll provide the rest.",
   },
   {
     q: "Are refunds available?",
-    a: "Yes—full refunds up to 48 hours before the event start time."
+    a: "Yes—full refunds up to 48 hours before the event start time.",
   },
   {
     q: "Is there a waitlist?",
-    a: "If tickets sell out, you can join the waitlist and we’ll notify you if a seat opens."
-  }
+    a: "If tickets sell out, you can join the waitlist and we’ll notify you if a seat opens.",
+  },
 ];
 
 const AGENDA_BLOCKS = [
@@ -100,13 +104,13 @@ const AGENDA_BLOCKS = [
   "Break",
   "Deep‑dive workshop",
   "Networking",
-  "Wrap‑up + next steps"
+  "Wrap‑up + next steps",
 ];
 
 const PRICING_TIERS = [
   { name: "General Admission", priceCents: 2500, qty: 60 },
   { name: "Early Bird", priceCents: 1500, qty: 20 },
-  { name: "VIP + Q&A", priceCents: 5000, qty: 10 }
+  { name: "VIP + Q&A", priceCents: 5000, qty: 10 },
 ];
 
 export function generateEventCopy(input: {
@@ -127,17 +131,19 @@ export function generateEventCopy(input: {
   const description = [
     opener,
     `This ${theme}-focused session is built for ${input.audience ?? "curious locals"} who want ${outcomes}.`,
-    desc
+    desc,
   ].join(" ");
 
   const agenda = pickMany(rand, AGENDA_BLOCKS, 5).map((item, idx) => ({
     time: idx === 0 ? "00:00" : `00:${String(idx * 20).padStart(2, "0")}`,
-    item
+    item,
   }));
 
   const faqs = pickMany(rand, FAQS, 3);
 
-  const suggestedCategory = EVENT_CATEGORIES.includes((input.category ?? "other") as any)
+  const suggestedCategory = EVENT_CATEGORIES.includes(
+    (input.category ?? "other") as any,
+  )
     ? input.category
     : pick(rand, EVENT_CATEGORIES);
 
@@ -146,7 +152,7 @@ export function generateEventCopy(input: {
     tags,
     agenda,
     faqs,
-    suggestedCategory
+    suggestedCategory,
   };
 }
 
@@ -157,20 +163,60 @@ export function generateTicketTiers(seed: string) {
 
 export function generateEventName(seed: string) {
   const rand = createSeededRandom(seed);
-  const adjectives = ["Local", "Spark", "Next‑Gen", "Neighborhood", "Creative", "Momentum", "Weekend"];
-  const nouns = ["Lab", "Session", "Meetup", "Showcase", "Studio", "Pop‑Up", "Series"];
+  const adjectives = [
+    "Local",
+    "Spark",
+    "Next‑Gen",
+    "Neighborhood",
+    "Creative",
+    "Momentum",
+    "Weekend",
+  ];
+  const nouns = [
+    "Lab",
+    "Session",
+    "Meetup",
+    "Showcase",
+    "Studio",
+    "Pop‑Up",
+    "Series",
+  ];
   return `${pick(rand, adjectives)} ${pick(rand, nouns)}`;
 }
 
 const CATEGORY_HINTS: Array<{ category: string; keywords: string[] }> = [
-  { category: "workshop", keywords: ["workshop", "hands-on", "bootcamp", "lab", "training"] },
-  { category: "class", keywords: ["class", "course", "lesson", "learn", "tutorial"] },
-  { category: "meetup", keywords: ["meetup", "networking", "community", "social", "coffee"] },
-  { category: "concert", keywords: ["concert", "music", "live", "gig", "band", "dj"] },
-  { category: "community", keywords: ["community", "neighborhood", "volunteer", "local"] },
-  { category: "sports", keywords: ["sports", "run", "fitness", "workout", "yoga", "cycling"] },
-  { category: "food", keywords: ["food", "tasting", "cooking", "dinner", "brunch"] },
-  { category: "arts", keywords: ["art", "design", "gallery", "painting", "creative"] }
+  {
+    category: "workshop",
+    keywords: ["workshop", "hands-on", "bootcamp", "lab", "training"],
+  },
+  {
+    category: "class",
+    keywords: ["class", "course", "lesson", "learn", "tutorial"],
+  },
+  {
+    category: "meetup",
+    keywords: ["meetup", "networking", "community", "social", "coffee"],
+  },
+  {
+    category: "concert",
+    keywords: ["concert", "music", "live", "gig", "band", "dj"],
+  },
+  {
+    category: "community",
+    keywords: ["community", "neighborhood", "volunteer", "local"],
+  },
+  {
+    category: "sports",
+    keywords: ["sports", "run", "fitness", "workout", "yoga", "cycling"],
+  },
+  {
+    category: "food",
+    keywords: ["food", "tasting", "cooking", "dinner", "brunch"],
+  },
+  {
+    category: "arts",
+    keywords: ["art", "design", "gallery", "painting", "creative"],
+  },
 ];
 
 export function suggestCategoryFromText(text: string) {

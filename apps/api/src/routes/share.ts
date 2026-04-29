@@ -9,7 +9,7 @@ router.get("/organizer/:id", async (req, res) => {
   const organizerId = z.string().uuid().parse(req.params.id);
   const orgRes = await pool.query<{ display_name: string }>(
     "SELECT display_name FROM organizers WHERE id = $1",
-    [organizerId]
+    [organizerId],
   );
   const organizer = orgRes.rows[0];
   if (!organizer) return res.status(404).send("Organizer not found");
@@ -45,7 +45,7 @@ router.get("/event/:id", async (req, res) => {
   const eventId = z.string().uuid().parse(req.params.id);
   const eventRes = await pool.query<{ title: string }>(
     "SELECT title FROM events WHERE id = $1",
-    [eventId]
+    [eventId],
   );
   const event = eventRes.rows[0];
   if (!event) return res.status(404).send("Event not found");
@@ -81,7 +81,7 @@ router.get("/organizers/:id.svg", async (req, res) => {
   const organizerId = z.string().uuid().parse(req.params.id);
   const orgRes = await pool.query<{ display_name: string }>(
     "SELECT display_name FROM organizers WHERE id = $1",
-    [organizerId]
+    [organizerId],
   );
   const organizer = orgRes.rows[0];
   if (!organizer) return res.status(404).send("Organizer not found");
@@ -139,7 +139,7 @@ router.get("/events/:id.svg", async (req, res) => {
       JOIN organizers o ON o.id = e.organizer_id
       WHERE e.id = $1
     `,
-    [eventId]
+    [eventId],
   );
   const event = eventRes.rows[0];
   if (!event) return res.status(404).send("Event not found");
@@ -149,7 +149,7 @@ router.get("/events/:id.svg", async (req, res) => {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
   });
   const venue = event.venue_name.replace(/</g, "").slice(0, 48);
   const organizer = event.organizer_name.replace(/</g, "").slice(0, 40);

@@ -4,4 +4,3 @@ import { loadEnv } from "./config";
 dotenv.config();
 
 export const env = loadEnv(process.env);
-

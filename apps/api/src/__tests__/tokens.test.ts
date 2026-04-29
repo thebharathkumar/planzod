@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } from "../auth/tokens";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+} from "../auth/tokens";
 
 describe("auth tokens", () => {
   it("signs/verifies access tokens", () => {
@@ -15,4 +20,3 @@ describe("auth tokens", () => {
     expect(typeof decoded.exp).toBe("number");
   });
 });
-

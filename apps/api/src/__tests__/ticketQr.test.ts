@@ -9,4 +9,3 @@ describe("ticket QR", () => {
     expect(decoded.eventId).toBe("event-1");
   });
 });
-

@@ -97,8 +97,69 @@ npm run dev:web
  - `POST /api/v1/waitlist/rewards/send`
 - Public page: `/waitlist`
 
+## Account management
+
+- Profile + notification preferences + saved Stripe payment methods at `/account`
+- Forgot password / reset flow at `/forgot-password` (token by email; in dev the token is returned in the response)
+- Soft-delete with `POST /api/v1/account/delete` (anonymizes email, revokes refresh tokens)
+- Customer support inbox at `/support` (open to anonymous users, threaded replies)
+
+API:
+- `GET/PUT /api/v1/account/profile`, `GET/PUT /api/v1/account/notifications`
+- `GET/POST/DELETE /api/v1/account/payment-methods`, `POST /api/v1/account/payment-methods/:id/default`
+- `POST /api/v1/account/password/forgot`, `POST /api/v1/account/password/reset`
+- `POST /api/v1/account/delete`
+- Support: `POST /api/v1/support`, `GET /api/v1/support/mine`, `POST /api/v1/support/:id/reply`
+
+## Bookings, refunds, reviews
+
+- Booking history at `/bookings` lists every order with line items and tickets
+- Attendees submit refund requests from `/bookings`; they track status at `/refunds`
+- Organizers approve / deny at `/organizer/refunds`; admins execute the Stripe refund
+
+API:
+- `GET /api/v1/me/bookings` (orders + line items + tickets)
+- `POST /api/v1/refunds` (attendee submit), `POST /api/v1/refunds/:id/cancel`
+- `GET /api/v1/refunds/organizer?status=`, `POST /api/v1/refunds/:id/decision`
+- `POST /api/v1/refunds/:id/execute` (admin runs Stripe refund + ledger entries)
+- Event reviews: `POST /api/v1/events/:eventId/reviews`, `GET /api/v1/events/:eventId/reviews`
+
+## Organizer tools
+
+- Edit, publish, and now **unpublish** events (`POST /api/v1/events/:id/unpublish`)
+- Send updates to attendees (`/organizer/events/:id/announcements`) over email / push / sms
+- Approve / deny refund requests at `/organizer/refunds`
+
+## Marketing
+
+- Campaign manager at `/admin/marketing` (CRUD + launch + pause + complete)
+- Channels: email, push, sms, generic digital, homepage feature
+- Recommendations endpoint personalizes based on category history + city: `GET /api/v1/recommendations`
+- Track engagement: `POST /api/v1/campaigns/track` records opens / clicks / unsubscribes
+- Feature events on the homepage (admin-only): `POST /api/v1/campaigns/feature-event`
+- Anonymous interaction tracking: `POST /api/v1/interactions`
+
+## Finance
+
+- Settlement + ledger entries written automatically on each Stripe `checkout.session.completed`
+- Configurable platform commission + processing fee (`finance_settings`, default 10% + 2.9% + $0.30)
+- Admin dashboard at `/admin/finance`: gross / refunds / commission / net, payout management, settlement reconciliation, CSV export
+- API: `/finance/sales`, `/finance/revenue`, `/finance/commission`, `/finance/payouts`, `/finance/settlements`, `/finance/reconcile`, `/finance/reports/financial(.csv)`
+
+## Analytics
+
+- Admin dashboard at `/admin/analytics` covering revenue trends, marketing channels, customer behaviour, discovery funnel, and top organizers
+- Per-organizer dashboard data: `GET /api/v1/analytics/organizer/dashboard`
+- CSV export: `GET /api/v1/analytics/export.csv?kind=events|revenue-trend`
+
 ## Workspace layout
-- `apps/api`: Express API + DB migrations
-- `apps/web`: React web app
+- `apps/api`: Express API + DB migrations (now includes finance, analytics, campaigns, refunds, support, account, recommendations)
+- `apps/web`: React web app (with new admin & attendee pages)
 - `packages/shared`: shared types/constants
 - `infra/cdk`: AWS CDK (staging/prod skeleton)
+
+## Tests
+
+- `npm --workspace @planzo/api run test` — unit tests for token signing, ticket QR, and commission math
+- `npm --workspace @planzo/api run typecheck` — strict TS typecheck (Bundler resolution)
+- `npm --workspace @planzo/web run typecheck` — frontend TS typecheck

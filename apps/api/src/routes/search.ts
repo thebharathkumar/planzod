@@ -13,7 +13,7 @@ const querySchema = z.object({
   category: z.string().optional(),
   price: z.enum(["any", "free", "paid"]).default("any"),
   limit: z.coerce.number().min(1).max(50).default(20),
-  offset: z.coerce.number().min(0).default(0)
+  offset: z.coerce.number().min(0).default(0),
 });
 
 router.get("/events", async (req, res) => {
@@ -69,11 +69,20 @@ router.get("/events", async (req, res) => {
       ORDER BY distance_m ASC, e.starts_at ASC
       LIMIT $8 OFFSET $9
     `,
-    [q.lng, q.lat, radiusM, q.from ?? null, q.to ?? null, q.category ?? null, q.price, q.limit, q.offset]
+    [
+      q.lng,
+      q.lat,
+      radiusM,
+      q.from ?? null,
+      q.to ?? null,
+      q.category ?? null,
+      q.price,
+      q.limit,
+      q.offset,
+    ],
   );
 
   res.json({ results: rows });
 });
 
 export default router;
-

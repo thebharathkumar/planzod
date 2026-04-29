@@ -40,7 +40,10 @@ export function renderOrganizerSummary(data: {
   return { subject, html };
 }
 
-export function renderWaitlistWelcome(data: { name?: string; referralLink: string }) {
+export function renderWaitlistWelcome(data: {
+  name?: string;
+  referralLink: string;
+}) {
   const subject = "Welcome to the Planzo waitlist";
   const html = `
     <div style="font-family: Inter, Arial, sans-serif; color: #111827;">
@@ -52,7 +55,10 @@ export function renderWaitlistWelcome(data: { name?: string; referralLink: strin
   return { subject, html };
 }
 
-export function renderWaitlistReward(data: { tier: string; referrals: number }) {
+export function renderWaitlistReward(data: {
+  tier: string;
+  referrals: number;
+}) {
   const subject = `You reached ${data.tier} on Planzo`;
   const html = `
     <div style="font-family: Inter, Arial, sans-serif; color: #111827;">

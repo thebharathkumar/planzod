@@ -44,7 +44,14 @@ export default function MyTicketsPage() {
     return (
       <div className="card">
         <p className="text-surface-400">
-          Please <Link className="font-medium text-brand-400 hover:text-brand-300" to="/login">login</Link> to view your tickets.
+          Please{" "}
+          <Link
+            className="font-medium text-brand-400 hover:text-brand-300"
+            to="/login"
+          >
+            login
+          </Link>{" "}
+          to view your tickets.
         </p>
       </div>
     );
@@ -53,14 +60,18 @@ export default function MyTicketsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-display text-2xl font-bold text-surface-50">My Tickets</h1>
+        <h1 className="font-display text-2xl font-bold text-surface-50">
+          My Tickets
+        </h1>
         <button
           type="button"
           className="btn-secondary"
           onClick={async () => {
             setLoading(true);
             try {
-              const data = await auth.apiFetch<{ tickets: Ticket[] }>("/me/tickets");
+              const data = await auth.apiFetch<{ tickets: Ticket[] }>(
+                "/me/tickets",
+              );
               setTickets(data.tickets ?? []);
             } finally {
               setLoading(false);
@@ -73,7 +84,9 @@ export default function MyTicketsPage() {
 
       {loading ? <div className="text-surface-400">Loading…</div> : null}
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
       ) : null}
 
       {tickets.length === 0 ? (
@@ -89,11 +102,15 @@ export default function MyTicketsPage() {
             <li key={t.id} className="card-hover">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <Link to={`/events/${t.event.id}`} className="block truncate text-base font-semibold text-surface-50 hover:text-brand-400">
+                  <Link
+                    to={`/events/${t.event.id}`}
+                    className="block truncate text-base font-semibold text-surface-50 hover:text-brand-400"
+                  >
                     {t.event.title}
                   </Link>
                   <p className="mt-1 text-sm text-surface-400">
-                    {new Date(t.event.startsAt).toLocaleString()} • {t.event.venueName}
+                    {new Date(t.event.startsAt).toLocaleString()} •{" "}
+                    {t.event.venueName}
                   </p>
                   <p className="mt-2 text-xs text-surface-500">
                     Ticket: {t.status} • Order: {t.orderStatus}
@@ -103,7 +120,9 @@ export default function MyTicketsPage() {
                   <QRCode value={t.qrPayload} size={96} />
                 </div>
               </div>
-              <p className="mt-3 text-xs text-surface-500">Show this QR at check-in.</p>
+              <p className="mt-3 text-xs text-surface-500">
+                Show this QR at check-in.
+              </p>
             </li>
           ))}
         </ul>

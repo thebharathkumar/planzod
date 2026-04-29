@@ -4,7 +4,7 @@ import {
   renderOrderConfirmation,
   renderOrganizerSummary,
   renderWaitlistReward,
-  renderWaitlistWelcome
+  renderWaitlistWelcome,
 } from "../email/templates";
 import { sendEmail } from "../email/sender";
 import { HttpError } from "../utils/http";
@@ -13,7 +13,7 @@ const router = Router();
 
 const previewSchema = z.object({
   type: z.enum(["order", "organizer", "waitlist_welcome", "waitlist_reward"]),
-  payload: z.record(z.any()).optional()
+  payload: z.record(z.string(), z.any()).optional(),
 });
 
 router.post("/preview", (req, res) => {
@@ -25,7 +25,7 @@ router.post("/preview", (req, res) => {
       startsAt: new Date().toISOString(),
       venueName: "Downtown Studio",
       ticketCount: 2,
-      ...(body.payload ?? {})
+      ...(body.payload ?? {}),
     });
     return res.json(template);
   }
@@ -33,7 +33,7 @@ router.post("/preview", (req, res) => {
   if (body.type === "waitlist_welcome") {
     const template = renderWaitlistWelcome({
       referralLink: "https://planzo.app/waitlist?ref=demo",
-      ...(body.payload ?? {})
+      ...(body.payload ?? {}),
     });
     return res.json(template);
   }
@@ -42,7 +42,7 @@ router.post("/preview", (req, res) => {
     const template = renderWaitlistReward({
       tier: "Gold",
       referrals: 8,
-      ...(body.payload ?? {})
+      ...(body.payload ?? {}),
     });
     return res.json(template);
   }
@@ -51,7 +51,7 @@ router.post("/preview", (req, res) => {
     organizerName: "Planzo Demo Organizer",
     eventTitle: "Local Creative Lab",
     ticketsSold: 34,
-    ...(body.payload ?? {})
+    ...(body.payload ?? {}),
   });
   return res.json(template);
 });
@@ -59,7 +59,7 @@ router.post("/preview", (req, res) => {
 const sendSchema = z.object({
   to: z.string().email(),
   type: z.enum(["order", "organizer", "waitlist_welcome", "waitlist_reward"]),
-  payload: z.record(z.any()).optional()
+  payload: z.record(z.string(), z.any()).optional(),
 });
 
 router.post("/send", async (req, res) => {
@@ -73,27 +73,31 @@ router.post("/send", async (req, res) => {
             startsAt: new Date().toISOString(),
             venueName: "Downtown Studio",
             ticketCount: 1,
-            ...(body.payload ?? {})
+            ...(body.payload ?? {}),
           })
         : body.type === "waitlist_welcome"
-        ? renderWaitlistWelcome({
-            referralLink: "https://planzo.app/waitlist?ref=demo",
-            ...(body.payload ?? {})
-          })
-        : body.type === "waitlist_reward"
-        ? renderWaitlistReward({
-            tier: "Gold",
-            referrals: 8,
-            ...(body.payload ?? {})
-          })
-        : renderOrganizerSummary({
-            organizerName: "Planzo Demo Organizer",
-            eventTitle: "Local Creative Lab",
-            ticketsSold: 42,
-            ...(body.payload ?? {})
-          });
+          ? renderWaitlistWelcome({
+              referralLink: "https://planzo.app/waitlist?ref=demo",
+              ...(body.payload ?? {}),
+            })
+          : body.type === "waitlist_reward"
+            ? renderWaitlistReward({
+                tier: "Gold",
+                referrals: 8,
+                ...(body.payload ?? {}),
+              })
+            : renderOrganizerSummary({
+                organizerName: "Planzo Demo Organizer",
+                eventTitle: "Local Creative Lab",
+                ticketsSold: 42,
+                ...(body.payload ?? {}),
+              });
 
-    await sendEmail({ to: body.to, subject: template.subject, html: template.html });
+    await sendEmail({
+      to: body.to,
+      subject: template.subject,
+      html: template.html,
+    });
     return res.json({ ok: true });
   } catch (err: any) {
     throw new HttpError(501, err?.message ?? "Email sending not configured");

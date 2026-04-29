@@ -10,11 +10,12 @@ const router = Router();
 
 const createSessionSchema = z.object({
   ticketTierId: z.string().uuid(),
-  quantity: z.number().int().min(1).max(10).default(1)
+  quantity: z.number().int().min(1).max(10).default(1),
 });
 
 router.post("/create-session", requireAuth, async (req, res) => {
-  if (!env.STRIPE_SECRET_KEY) throw new HttpError(501, "Stripe is not configured");
+  if (!env.STRIPE_SECRET_KEY)
+    throw new HttpError(501, "Stripe is not configured");
   const stripe = getStripe();
 
   const body = createSessionSchema.parse(req.body);
@@ -48,18 +49,22 @@ router.post("/create-session", requireAuth, async (req, res) => {
       JOIN events e ON e.id = tt.event_id
       WHERE tt.id = $1
     `,
-    [body.ticketTierId]
+    [body.ticketTierId],
   );
   const tier = tierRes.rows[0];
   if (!tier) throw new HttpError(404, "Ticket tier not found");
-  if (tier.event_status !== "published") throw new HttpError(400, "Event is not published");
-  if (tier.remaining_qty < body.quantity) throw new HttpError(400, "Not enough tickets remaining");
+  if (tier.event_status !== "published")
+    throw new HttpError(400, "Event is not published");
+  if (tier.remaining_qty < body.quantity)
+    throw new HttpError(400, "Not enough tickets remaining");
 
   const now = Date.now();
   const salesStart = new Date(tier.sales_start).getTime();
   const salesEnd = tier.sales_end ? new Date(tier.sales_end).getTime() : null;
-  if (now < salesStart) throw new HttpError(400, "Ticket sales have not started");
-  if (salesEnd !== null && now > salesEnd) throw new HttpError(400, "Ticket sales have ended");
+  if (now < salesStart)
+    throw new HttpError(400, "Ticket sales have not started");
+  if (salesEnd !== null && now > salesEnd)
+    throw new HttpError(400, "Ticket sales have ended");
 
   const amountTotalCents = tier.price_cents * body.quantity;
 
@@ -71,7 +76,7 @@ router.post("/create-session", requireAuth, async (req, res) => {
         VALUES ($1,$2,'pending',$3,$4)
         RETURNING id
       `,
-      [tier.event_id, userId, amountTotalCents, tier.currency]
+      [tier.event_id, userId, amountTotalCents, tier.currency],
     );
     const orderId = orderRes.rows[0].id;
 
@@ -80,7 +85,7 @@ router.post("/create-session", requireAuth, async (req, res) => {
         INSERT INTO order_items(order_id, ticket_tier_id, qty, unit_price_cents)
         VALUES ($1,$2,$3,$4)
       `,
-      [orderId, tier.ticket_tier_id, body.quantity, tier.price_cents]
+      [orderId, tier.ticket_tier_id, body.quantity, tier.price_cents],
     );
 
     const session = await stripe.checkout.sessions.create({
@@ -91,20 +96,23 @@ router.post("/create-session", requireAuth, async (req, res) => {
             currency: tier.currency,
             unit_amount: tier.price_cents,
             product_data: {
-              name: `${tier.event_title} — ${tier.tier_name}`
-            }
+              name: `${tier.event_title} — ${tier.tier_name}`,
+            },
           },
-          quantity: body.quantity
-        }
+          quantity: body.quantity,
+        },
       ],
       success_url: `${env.WEB_BASE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${env.WEB_BASE_URL}/events/${tier.event_id}`,
       metadata: {
-        orderId
-      }
+        orderId,
+      },
     });
 
-    await pool.query("UPDATE orders SET stripe_session_id = $1 WHERE id = $2", [session.id, orderId]);
+    await pool.query("UPDATE orders SET stripe_session_id = $1 WHERE id = $2", [
+      session.id,
+      orderId,
+    ]);
 
     await pool.query("COMMIT");
     res.status(201).json({ stripeCheckoutUrl: session.url, orderId });
@@ -115,4 +123,3 @@ router.post("/create-session", requireAuth, async (req, res) => {
 });
 
 export default router;
-

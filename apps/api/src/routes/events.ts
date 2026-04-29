@@ -14,7 +14,7 @@ const venueSchema = z.object({
   address: z.string().max(240).optional().default(""),
   placeId: z.string().max(200).optional().default(""),
   lat: z.number().finite(),
-  lng: z.number().finite()
+  lng: z.number().finite(),
 });
 
 const eventSchema = z.object({
@@ -24,10 +24,12 @@ const eventSchema = z.object({
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime(),
   heroImageUrl: z.string().url().optional().nullable().default(null),
-  venue: venueSchema
+  venue: venueSchema,
 });
 
-async function upsertVenue(venue: z.infer<typeof venueSchema>): Promise<{ id: string; lat: number; lng: number }> {
+async function upsertVenue(
+  venue: z.infer<typeof venueSchema>,
+): Promise<{ id: string; lat: number; lng: number }> {
   const placeId = venue.placeId?.trim() || null;
   if (placeId) {
     const { rows } = await pool.query<{ id: string; lat: number; lng: number }>(
@@ -41,32 +43,37 @@ async function upsertVenue(venue: z.infer<typeof venueSchema>): Promise<{ id: st
             lng = EXCLUDED.lng
         RETURNING id, lat, lng
       `,
-      [venue.name, venue.address ?? "", placeId, venue.lat, venue.lng]
+      [venue.name, venue.address ?? "", placeId, venue.lat, venue.lng],
     );
     return rows[0];
   }
 
   const { rows } = await pool.query<{ id: string; lat: number; lng: number }>(
     "INSERT INTO venues(name, address, place_id, lat, lng) VALUES ($1, $2, NULL, $3, $4) RETURNING id, lat, lng",
-    [venue.name, venue.address ?? "", venue.lat, venue.lng]
+    [venue.name, venue.address ?? "", venue.lat, venue.lng],
   );
   return rows[0];
 }
 
-router.post("/", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
-  const body = eventSchema.parse(req.body);
+router.post(
+  "/",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
+    const body = eventSchema.parse(req.body);
 
-  const startsAt = new Date(body.startsAt);
-  const endsAt = new Date(body.endsAt);
-  if (!(endsAt > startsAt)) throw new HttpError(400, "endsAt must be after startsAt");
+    const startsAt = new Date(body.startsAt);
+    const endsAt = new Date(body.endsAt);
+    if (!(endsAt > startsAt))
+      throw new HttpError(400, "endsAt must be after startsAt");
 
-  await pool.query("BEGIN");
-  try {
-    const venue = await upsertVenue(body.venue);
-    const { rows } = await pool.query<{ id: string }>(
-      `
+    await pool.query("BEGIN");
+    try {
+      const venue = await upsertVenue(body.venue);
+      const { rows } = await pool.query<{ id: string }>(
+        `
         INSERT INTO events(
           organizer_id, venue_id, title, description, category, starts_at, ends_at,
           status, hero_image_url, lat, lng
@@ -74,56 +81,68 @@ router.post("/", requireAuth, requireRole(["organizer", "admin"]), async (req, r
         VALUES ($1,$2,$3,$4,$5,$6,$7,'draft',$8,$9,$10)
         RETURNING id
       `,
-      [
-        organizerId,
-        venue.id,
-        body.title,
-        body.description ?? "",
-        body.category,
-        startsAt.toISOString(),
-        endsAt.toISOString(),
-        body.heroImageUrl,
-        venue.lat,
-        venue.lng
-      ]
-    );
-    const eventId = rows[0].id;
+        [
+          organizerId,
+          venue.id,
+          body.title,
+          body.description ?? "",
+          body.category,
+          startsAt.toISOString(),
+          endsAt.toISOString(),
+          body.heroImageUrl,
+          venue.lat,
+          venue.lng,
+        ],
+      );
+      const eventId = rows[0].id;
 
-    await pool.query(
-      "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
-      [userId, "event.create", "event", eventId, JSON.stringify({ title: body.title })]
-    );
+      await pool.query(
+        "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
+        [
+          userId,
+          "event.create",
+          "event",
+          eventId,
+          JSON.stringify({ title: body.title }),
+        ],
+      );
 
-    await pool.query("COMMIT");
-    res.status(201).json({ eventId });
-  } catch (err) {
-    await pool.query("ROLLBACK");
-    throw err;
-  }
-});
+      await pool.query("COMMIT");
+      res.status(201).json({ eventId });
+    } catch (err) {
+      await pool.query("ROLLBACK");
+      throw err;
+    }
+  },
+);
 
-router.put("/:id", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
-  const eventId = z.string().uuid().parse(req.params.id);
-  const body = eventSchema.parse(req.body);
+router.put(
+  "/:id",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
+    const eventId = z.string().uuid().parse(req.params.id);
+    const body = eventSchema.parse(req.body);
 
-  const startsAt = new Date(body.startsAt);
-  const endsAt = new Date(body.endsAt);
-  if (!(endsAt > startsAt)) throw new HttpError(400, "endsAt must be after startsAt");
+    const startsAt = new Date(body.startsAt);
+    const endsAt = new Date(body.endsAt);
+    if (!(endsAt > startsAt))
+      throw new HttpError(400, "endsAt must be after startsAt");
 
-  await pool.query("BEGIN");
-  try {
-    const ownership = await pool.query<{ id: string }>(
-      "SELECT id FROM events WHERE id = $1 AND organizer_id = $2",
-      [eventId, organizerId]
-    );
-    if (!ownership.rows[0]) throw new HttpError(404, "Event not found");
+    await pool.query("BEGIN");
+    try {
+      const ownership = await pool.query<{ id: string }>(
+        "SELECT id FROM events WHERE id = $1 AND organizer_id = $2",
+        [eventId, organizerId],
+      );
+      if (!ownership.rows[0]) throw new HttpError(404, "Event not found");
 
-    const venue = await upsertVenue(body.venue);
+      const venue = await upsertVenue(body.venue);
 
-    await pool.query(
-      `
+      await pool.query(
+        `
         UPDATE events
         SET venue_id = $1,
             title = $2,
@@ -136,85 +155,137 @@ router.put("/:id", requireAuth, requireRole(["organizer", "admin"]), async (req,
             lng = $9
         WHERE id = $10
       `,
-      [
-        venue.id,
-        body.title,
-        body.description ?? "",
-        body.category,
-        startsAt.toISOString(),
-        endsAt.toISOString(),
-        body.heroImageUrl,
-        venue.lat,
-        venue.lng,
-        eventId
-      ]
+        [
+          venue.id,
+          body.title,
+          body.description ?? "",
+          body.category,
+          startsAt.toISOString(),
+          endsAt.toISOString(),
+          body.heroImageUrl,
+          venue.lat,
+          venue.lng,
+          eventId,
+        ],
+      );
+
+      await pool.query(
+        "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
+        [
+          userId,
+          "event.update",
+          "event",
+          eventId,
+          JSON.stringify({ title: body.title }),
+        ],
+      );
+
+      await pool.query("COMMIT");
+      res.json({ ok: true });
+    } catch (err) {
+      await pool.query("ROLLBACK");
+      throw err;
+    }
+  },
+);
+
+router.post(
+  "/:id/publish",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
+    const eventId = z.string().uuid().parse(req.params.id);
+
+    const { rowCount: tiers } = await pool.query(
+      "SELECT 1 FROM ticket_tiers WHERE event_id = $1 LIMIT 1",
+      [eventId],
     );
+    if (!tiers)
+      throw new HttpError(
+        400,
+        "Add at least one ticket tier before publishing",
+      );
+
+    const eventRes = await pool.query<{
+      title: string;
+      description: string;
+      category: string;
+    }>(
+      "SELECT title, description, category FROM events WHERE id = $1 AND organizer_id = $2",
+      [eventId, organizerId],
+    );
+    const event = eventRes.rows[0];
+    if (!event) throw new HttpError(404, "Event not found");
+
+    const nextCategory =
+      event.category === "other"
+        ? suggestCategoryFromText(`${event.title} ${event.description}`)
+        : event.category;
+
+    const { rowCount } = await pool.query(
+      "UPDATE events SET status = 'published', category = $3 WHERE id = $1 AND organizer_id = $2 AND status = 'draft'",
+      [eventId, organizerId, nextCategory],
+    );
+    if (!rowCount)
+      throw new HttpError(404, "Event not found (or already published)");
 
     await pool.query(
       "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
-      [userId, "event.update", "event", eventId, JSON.stringify({ title: body.title })]
+      [userId, "event.publish", "event", eventId, JSON.stringify({})],
     );
 
-    await pool.query("COMMIT");
     res.json({ ok: true });
-  } catch (err) {
-    await pool.query("ROLLBACK");
-    throw err;
-  }
-});
+  },
+);
 
-router.post("/:id/publish", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
-  const eventId = z.string().uuid().parse(req.params.id);
+router.post(
+  "/:id/unpublish",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
+    const eventId = z.string().uuid().parse(req.params.id);
 
-  const { rowCount: tiers } = await pool.query("SELECT 1 FROM ticket_tiers WHERE event_id = $1 LIMIT 1", [eventId]);
-  if (!tiers) throw new HttpError(400, "Add at least one ticket tier before publishing");
+    const { rowCount } = await pool.query(
+      "UPDATE events SET status = 'draft' WHERE id = $1 AND organizer_id = $2 AND status = 'published'",
+      [eventId, organizerId],
+    );
+    if (!rowCount) throw new HttpError(404, "Event not found or not published");
 
-  const eventRes = await pool.query<{ title: string; description: string; category: string }>(
-    "SELECT title, description, category FROM events WHERE id = $1 AND organizer_id = $2",
-    [eventId, organizerId]
-  );
-  const event = eventRes.rows[0];
-  if (!event) throw new HttpError(404, "Event not found");
+    await pool.query(
+      "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
+      [userId, "event.unpublish", "event", eventId, JSON.stringify({})],
+    );
+    res.json({ ok: true });
+  },
+);
 
-  const nextCategory =
-    event.category === "other"
-      ? suggestCategoryFromText(`${event.title} ${event.description}`)
-      : event.category;
+router.post(
+  "/:id/cancel",
+  requireAuth,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const organizerId = await requireOrganizerId(userId);
+    const eventId = z.string().uuid().parse(req.params.id);
 
-  const { rowCount } = await pool.query(
-    "UPDATE events SET status = 'published', category = $3 WHERE id = $1 AND organizer_id = $2 AND status = 'draft'",
-    [eventId, organizerId, nextCategory]
-  );
-  if (!rowCount) throw new HttpError(404, "Event not found (or already published)");
+    const { rowCount } = await pool.query(
+      "UPDATE events SET status = 'cancelled' WHERE id = $1 AND organizer_id = $2",
+      [eventId, organizerId],
+    );
+    if (!rowCount) throw new HttpError(404, "Event not found");
 
-  await pool.query(
-    "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
-    [userId, "event.publish", "event", eventId, JSON.stringify({})]
-  );
+    await pool.query(
+      "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
+      [userId, "event.cancel", "event", eventId, JSON.stringify({})],
+    );
 
-  res.json({ ok: true });
-});
-
-router.post("/:id/cancel", requireAuth, requireRole(["organizer", "admin"]), async (req, res) => {
-  const userId = req.user!.id;
-  const organizerId = await requireOrganizerId(userId);
-  const eventId = z.string().uuid().parse(req.params.id);
-
-  const { rowCount } = await pool.query(
-    "UPDATE events SET status = 'cancelled' WHERE id = $1 AND organizer_id = $2",
-    [eventId, organizerId]
-  );
-  if (!rowCount) throw new HttpError(404, "Event not found");
-
-  await pool.query(
-    "INSERT INTO audit_logs(actor_user_id, action, entity_type, entity_id, metadata_json) VALUES ($1,$2,$3,$4,$5)",
-    [userId, "event.cancel", "event", eventId, JSON.stringify({})]
-  );
-
-  res.json({ ok: true });
-});
+    res.json({ ok: true });
+  },
+);
 
 router.get("/:id", async (req, res) => {
   const eventId = z.string().uuid().parse(req.params.id);
@@ -241,7 +312,7 @@ router.get("/:id", async (req, res) => {
       JOIN organizers o ON o.id = e.organizer_id
       WHERE e.id = $1 AND e.status = 'published'
     `,
-    [eventId]
+    [eventId],
   );
   const event = rows[0];
   if (!event) throw new HttpError(404, "Event not found");
@@ -253,15 +324,24 @@ router.get("/:id", async (req, res) => {
       WHERE event_id = $1
       ORDER BY price_cents ASC, name ASC
     `,
-    [eventId]
+    [eventId],
   );
 
   const ai = generateEventCopy({
     title: event.title,
     category: event.category,
     audience: "attendees",
-    seed: eventId
+    seed: eventId,
   });
+
+  // Fire-and-forget interaction tracking (anon allowed).
+  pool
+    .query(
+      `INSERT INTO user_event_interactions(user_id, event_id, interaction_type, source)
+       VALUES ($1,$2,'view','event_page')`,
+      [req.user?.id ?? null, eventId],
+    )
+    .catch(() => {});
 
   res.json({ event, ticketTiers: tiers.rows, aiFaqs: ai.faqs });
 });

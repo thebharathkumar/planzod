@@ -7,7 +7,12 @@ type ValidateResponse =
   | { status: "invalid" }
   | { status: "voided"; ticketId: string; eventId: string }
   | { status: "used"; ticketId: string; eventId: string; attendeeEmail: string }
-  | { status: "valid"; ticketId: string; eventId: string; attendeeEmail: string };
+  | {
+      status: "valid";
+      ticketId: string;
+      eventId: string;
+      attendeeEmail: string;
+    };
 
 export default function ScannerPage() {
   const auth = useAuth();
@@ -30,30 +35,42 @@ export default function ScannerPage() {
       setStatus("Starting camera…");
       setError(null);
       try {
-        controls = await reader.decodeFromVideoDevice(undefined, videoRef.current, async (result, _err) => {
-          if (!result || cancelled) return;
-          const payload = result.getText();
-          const now = Date.now();
-          if (lastScan.current && lastScan.current.payload === payload && now - lastScan.current.at < 2500) return;
-          lastScan.current = { payload, at: now };
+        controls = await reader.decodeFromVideoDevice(
+          undefined,
+          videoRef.current,
+          async (result, _err) => {
+            if (!result || cancelled) return;
+            const payload = result.getText();
+            const now = Date.now();
+            if (
+              lastScan.current &&
+              lastScan.current.payload === payload &&
+              now - lastScan.current.at < 2500
+            )
+              return;
+            lastScan.current = { payload, at: now };
 
-          setLastPayload(payload);
-          setStatus("Validating…");
-          setError(null);
+            setLastPayload(payload);
+            setStatus("Validating…");
+            setError(null);
 
-          try {
-            const data = await auth.apiFetch<ValidateResponse>("/tickets/validate", {
-              method: "POST",
-              body: JSON.stringify({ qrPayload: payload })
-            });
-            setValidation(data);
-            setStatus(data.status);
-          } catch (err: any) {
-            setValidation(null);
-            setStatus("Error");
-            setError(err?.message ?? "Validation failed");
-          }
-        });
+            try {
+              const data = await auth.apiFetch<ValidateResponse>(
+                "/tickets/validate",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ qrPayload: payload }),
+                },
+              );
+              setValidation(data);
+              setStatus(data.status);
+            } catch (err: any) {
+              setValidation(null);
+              setStatus("Error");
+              setError(err?.message ?? "Validation failed");
+            }
+          },
+        );
 
         setStatus("Scanning…");
       } catch (err: any) {
@@ -65,14 +82,17 @@ export default function ScannerPage() {
     return () => {
       cancelled = true;
       controls?.stop();
-      reader.reset();
     };
   }, [auth, reader]);
 
   if (!auth.user) {
     return (
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
-        Please <Link className="underline" to="/login">login</Link> to scan tickets.
+        Please{" "}
+        <Link className="underline" to="/login">
+          login
+        </Link>{" "}
+        to scan tickets.
       </div>
     );
   }
@@ -84,13 +104,18 @@ export default function ScannerPage() {
         <div className="text-xs text-neutral-400">{status}</div>
       </div>
 
-      {error ? <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">{error}</div> : null}
+      {error ? (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">
+          {error}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3">
           <video ref={videoRef} className="w-full rounded-md bg-black" />
           <div className="mt-2 text-xs text-neutral-400">
-            Tip: use a phone on the same network and open this page to scan attendee QR codes.
+            Tip: use a phone on the same network and open this page to scan
+            attendee QR codes.
           </div>
         </div>
 
@@ -112,9 +137,12 @@ export default function ScannerPage() {
               onClick={async () => {
                 setError(null);
                 try {
-                  const data = await auth.apiFetch<{ status: string }>(`/tickets/${validation.ticketId}/checkin`, {
-                    method: "POST"
-                  });
+                  const data = await auth.apiFetch<{ status: string }>(
+                    `/tickets/${validation.ticketId}/checkin`,
+                    {
+                      method: "POST",
+                    },
+                  );
                   setStatus(`checkin:${data.status}`);
                 } catch (err: any) {
                   setError(err?.message ?? "Check-in failed");
@@ -126,11 +154,11 @@ export default function ScannerPage() {
           ) : null}
 
           <div className="text-xs text-neutral-400">
-            Requires organizer access; if you get 403, create an organizer profile under “Organizer”.
+            Requires organizer access; if you get 403, create an organizer
+            profile under “Organizer”.
           </div>
         </div>
       </div>
     </div>
   );
 }
-
