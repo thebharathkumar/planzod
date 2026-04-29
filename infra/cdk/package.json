@@ -1,0 +1,21 @@
+{
+  "name": "@planzo/cdk",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "prettier -c \"bin/**/*.ts\" \"lib/**/*.ts\"",
+    "test": "node -e \"console.log('no tests')\""
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.220.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "typescript": "^5.9.2"
+  }
+}
+

@@ -1,0 +1,30 @@
+{
+  "name": "planzo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "infra/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "npm --workspace apps/api run dev",
+    "dev:web": "npm --workspace apps/web run dev",
+    "migrate": "npm --workspace apps/api run migrate",
+    "migrate:up": "npm --workspace apps/api run migrate:up",
+    "migrate:down": "npm --workspace apps/api run migrate:down",
+    "setup:local": "./scripts/run-local.sh",
+    "seed": "npm --workspace apps/api run seed",
+    "lint": "npm --workspaces run lint",
+    "typecheck": "npm --workspaces run typecheck",
+    "test": "npm --workspaces run test",
+    "build": "npm --workspaces run build"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}
