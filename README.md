@@ -2,7 +2,52 @@
 
 Planzo is a location-aware event discovery and ticketing MVP (React + Node + Postgres/PostGIS + Stripe), designed for an end-to-end capstone demo.
 
-## Local dev (Week 1 foundation)
+## Deploy: Supabase (DB) + Render (API) + Vercel (Web)
+
+### 1. Create the database — Supabase
+
+1. Sign up / log in at [supabase.com](https://supabase.com)
+2. **New project** → name: `planzod` → strong password → region nearest you → **Postgres (Default)** → leave RLS off
+3. After it provisions: **Database → Extensions** → enable `postgis`, `pgcrypto`, `citext`
+4. Copy the connection string from **Settings → Database → Connection string** (`URI` tab)
+
+### 2. Bootstrap the schema and seed
+
+On your local machine:
+
+```bash
+git clone <this repo>
+cd planzo
+export DATABASE_URL='postgresql://postgres:YOUR_PW@db.<your-ref>.supabase.co:5432/postgres'
+npm run setup:supabase
+```
+
+The script installs dependencies, runs all migrations, and seeds 12 demo events plus three demo accounts (`demo@planzo.app`, `attendee@planzo.app`, `admin@planzo.app` — password `password123`).
+
+### 3. Deploy the API — Render
+
+Render reads the `render.yaml` checked into the repo. One-click deploy:
+
+1. [render.com](https://render.com) → **New → Blueprint** → connect your GitHub fork
+2. Render creates `planzo-api` automatically with the right build / start / health-check
+3. In the new service's **Environment**, set the three secrets it asks for:
+   - `DATABASE_URL` — your Supabase connection string from step 1
+   - `CORS_ORIGIN` — your Vercel URL (e.g. `https://planzod.vercel.app`)
+   - `WEB_BASE_URL` — same Vercel URL
+4. Click **Apply** — first deploy takes ~3 min; the JWT/QR secrets are auto-generated.
+
+The free tier sleeps after 15 minutes of inactivity (cold start ~30s on first request).
+
+### 4. Connect the frontend — Vercel
+
+Your Vercel project already deploys from `vercel.json`. Add one env var:
+
+- **Settings → Environment Variables → New** → `VITE_API_BASE_URL` = `https://planzo-api.onrender.com/api/v1` (your Render URL)
+- **Deployments → … → Redeploy**
+
+The "Demo data" badge disappears and the UI talks to your Supabase-backed API.
+
+## Local dev
 
 ### Prereqs
 - Node.js >= 20
