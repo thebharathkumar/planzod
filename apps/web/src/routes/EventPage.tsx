@@ -1,8 +1,10 @@
+import L from "leaflet";
 import { useEffect, useState } from "react";
+import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import { Link, useParams } from "react-router-dom";
-import { useAuth } from "../lib/auth";
-import { API_BASE_URL } from "../lib/env";
 import EventReviews from "../components/EventReviews";
+import { useAuth } from "../lib/auth";
+import { getEvent } from "../lib/api";
 
 type TicketTier = {
   id: string;
@@ -10,8 +12,7 @@ type TicketTier = {
   price_cents: number;
   currency: string;
   remaining_qty: number;
-  sales_start: string;
-  sales_end: string | null;
+  description?: string;
 };
 
 type EventDetail = {
@@ -29,9 +30,21 @@ type EventDetail = {
   venue_id: string;
   venue_name: string;
   venue_address: string | null;
+  city?: string;
+  rating?: number;
+  review_count?: number;
+  tags?: string[];
 };
 
+const planzoIcon = L.divIcon({
+  className: "",
+  html: '<div class="planzo-pin"></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
 function centsToDollars(cents: number) {
+  if (cents === 0) return "Free";
   return `$${(cents / 100).toFixed(2)}`;
 }
 
@@ -43,238 +56,244 @@ export default function EventPage() {
   const [aiFaqs, setAiFaqs] = useState<{ q: string; a: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usingMock, setUsingMock] = useState(false);
   const [buyingTierId, setBuyingTierId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!id) return;
     (async () => {
       setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${API_BASE_URL}/events/${id}`, {
-          headers: { accept: "application/json" },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message ?? "Failed to load event");
+      const data = await getEvent(id);
+      if (!data) {
+        setError("Event not found.");
+      } else {
         setEvent(data.event);
         setTiers(data.ticketTiers ?? []);
         setAiFaqs(data.aiFaqs ?? []);
-      } catch (err: any) {
-        setError(err?.message ?? "Failed to load event");
-      } finally {
-        setLoading(false);
+        setUsingMock(data.mock);
       }
+      setLoading(false);
     })();
   }, [id]);
 
   useEffect(() => {
     if (!event) return;
     document.title = `${event.title} · Planzo`;
-    const description =
-      event.description?.slice(0, 155) ?? "Discover local events on Planzo.";
-    let meta = document.querySelector(
-      'meta[name="description"]',
-    ) as HTMLMetaElement | null;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "description";
-      document.head.appendChild(meta);
-    }
-    meta.content = description;
   }, [event]);
 
   if (loading)
     return (
-      <div className="card py-12 text-center text-surface-400">Loading…</div>
+      <div className="card py-12 text-center text-surface-300">Loading…</div>
     );
   if (error)
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
         {error}
       </div>
     );
-  if (!event)
-    return (
-      <div className="card py-12 text-center text-surface-400">
-        Event not found.
-      </div>
-    );
+  if (!event) return null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold text-surface-50 sm:text-3xl">
-            {event.title}
-          </h1>
-          <p className="mt-1 text-surface-400">
-            {event.venue_name}
-            {event.venue_address ? ` • ${event.venue_address}` : ""}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="badge">{event.category}</span>
-            <span className="badge-brand">
-              {new Date(event.starts_at).toLocaleString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </span>
+      {/* Hero */}
+      {event.hero_image_url && (
+        <div
+          className="relative h-72 w-full overflow-hidden rounded-2xl bg-cover bg-center"
+          style={{ backgroundImage: `url(${event.hero_image_url})` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-surface-950 via-surface-950/40 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6">
+            <div className="flex items-center gap-2">
+              <span className="badge">{event.category}</span>
+              <span className="badge-brand">
+                {new Date(event.starts_at).toLocaleString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+              {usingMock && <span className="badge-emerald">Demo data</span>}
+            </div>
+            <h1 className="mt-2 font-display text-3xl font-bold md:text-4xl">
+              {event.title}
+            </h1>
+            <p className="mt-1 text-surface-300">
+              {event.venue_name}
+              {event.venue_address ? ` · ${event.venue_address}` : ""}
+              {event.city ? ` · ${event.city}` : ""}
+            </p>
           </div>
         </div>
-        <Link className="btn-secondary shrink-0" to="/">
-          ← Back to search
-        </Link>
-      </div>
+      )}
 
-      <div className="card">
-        <h2 className="font-display text-lg font-semibold text-surface-50">
-          About
-        </h2>
-        <p className="mt-3 whitespace-pre-wrap text-surface-300">
-          {event.description || "No description."}
-        </p>
-        <p className="mt-4 text-sm text-surface-400">
-          Hosted by{" "}
-          <Link
-            className="font-medium text-brand-400 hover:text-brand-300"
-            to={`/organizers/${event.organizer_id}`}
-          >
-            {event.organizer_name}
-          </Link>
-        </p>
-      </div>
-
-      <div className="card">
-        <h2 className="font-display text-lg font-semibold text-surface-50">
-          Share
-        </h2>
-        <p className="mt-1 text-sm text-surface-400">
-          Invite friends or post to social.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            className="btn-primary"
-            onClick={async () => {
-              const url = `${API_BASE_URL}/share/event/${event.id}`;
-              try {
-                await navigator.clipboard.writeText(url);
-                alert("Link copied!");
-              } catch {
-                alert(url);
-              }
-            }}
-          >
-            Copy link
-          </button>
-          <a
-            className="btn-secondary"
-            href={`${API_BASE_URL}/share/event/${event.id}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open in new tab
-          </a>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-display text-lg font-semibold text-surface-50">
-            Tickets
-          </h2>
-          {!auth.user ? (
-            <Link
-              className="text-sm font-medium text-brand-400 hover:text-brand-300"
-              to="/login"
-            >
-              Login to buy
-            </Link>
-          ) : null}
-        </div>
-
-        {tiers.length === 0 ? (
-          <p className="mt-4 text-surface-400">No ticket tiers available.</p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {tiers.map((t) => (
-              <li
-                key={t.id}
-                className="flex flex-col gap-3 rounded-xl border border-surface-700 bg-surface-900/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+      <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
+        <div className="space-y-6">
+          {/* About */}
+          <div className="card">
+            <h2 className="font-display text-xl">About</h2>
+            <p className="mt-3 whitespace-pre-wrap text-surface-200">
+              {event.description || "No description."}
+            </p>
+            <p className="mt-4 text-sm text-surface-400">
+              Hosted by{" "}
+              <Link
+                to={`/organizers/${event.organizer_id}`}
+                className="text-brand-300 hover:text-brand-400"
               >
-                <div className="min-w-0">
-                  <div className="font-medium text-surface-50">{t.name}</div>
-                  <div className="mt-1 text-sm text-surface-400">
-                    {centsToDollars(t.price_cents)} • {t.remaining_qty} left
-                  </div>
-                </div>
-                <button
-                  className="btn-primary shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={
-                    !auth.user || t.remaining_qty <= 0 || buyingTierId === t.id
-                  }
-                  onClick={async () => {
-                    if (!auth.user) return;
-                    setBuyingTierId(t.id);
-                    try {
-                      const data = await auth.apiFetch<{
-                        stripeCheckoutUrl: string;
-                      }>("/checkout/create-session", {
-                        method: "POST",
-                        body: JSON.stringify({
-                          ticketTierId: t.id,
-                          quantity: 1,
-                        }),
-                      });
-                      window.location.href = data.stripeCheckoutUrl;
-                    } catch (err: any) {
-                      setError(err?.message ?? "Checkout failed");
-                    } finally {
-                      setBuyingTierId(null);
-                    }
-                  }}
-                >
-                  {t.remaining_qty <= 0
-                    ? "Sold out"
-                    : buyingTierId === t.id
-                      ? "Redirecting…"
-                      : "Buy ticket"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <p className="mt-4 text-xs text-surface-500">
-          Payments use Stripe test mode (configure STRIPE_SECRET_KEY + webhook
-          to issue tickets).
-        </p>
-      </div>
-
-      {aiFaqs.length > 0 ? (
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold text-surface-50">
-              AI FAQs
-            </h2>
-            <span className="text-xs text-surface-500">Auto‑generated</span>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {aiFaqs.map((f, idx) => (
-              <div
-                key={`${f.q}-${idx}`}
-                className="rounded-xl border border-surface-700 bg-surface-950/50 p-4"
-              >
-                <div className="font-medium text-surface-200">{f.q}</div>
-                <div className="mt-1 text-sm text-surface-400">{f.a}</div>
+                {event.organizer_name}
+              </Link>
+              {event.rating != null && (
+                <>
+                  {" "}
+                  · ★ {event.rating} ({event.review_count} reviews)
+                </>
+              )}
+            </p>
+            {event.tags && event.tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {event.tags.map((t) => (
+                  <span key={t} className="badge">
+                    {t}
+                  </span>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      ) : null}
 
-      <EventReviews eventId={event.id} />
+          {/* Map */}
+          <div className="card overflow-hidden p-0">
+            <div className="h-72 w-full">
+              <MapContainer
+                center={[event.lat, event.lng]}
+                zoom={14}
+                scrollWheelZoom={false}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[event.lat, event.lng]} icon={planzoIcon} />
+              </MapContainer>
+            </div>
+          </div>
+
+          {aiFaqs.length > 0 && (
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-xl">FAQs</h2>
+                <span className="text-xs text-surface-500">Auto-generated</span>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {aiFaqs.map((f, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-surface-700/40 bg-surface-900/40 p-3"
+                  >
+                    <p className="font-medium text-surface-100">{f.q}</p>
+                    <p className="mt-1 text-sm text-surface-400">{f.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <EventReviews eventId={event.id} />
+        </div>
+
+        {/* Tickets */}
+        <aside className="space-y-4">
+          <div className="card">
+            <h2 className="font-display text-xl">Tickets</h2>
+            {tiers.length === 0 ? (
+              <p className="mt-3 text-surface-400">
+                No ticket tiers available.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {tiers.map((t) => (
+                  <li
+                    key={t.id}
+                    className="rounded-xl border border-surface-700/50 bg-surface-900/40 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-surface-100">
+                          {t.name}
+                        </div>
+                        {t.description && (
+                          <p className="text-xs text-surface-400">
+                            {t.description}
+                          </p>
+                        )}
+                        <div className="mt-1 text-sm text-surface-400">
+                          {t.remaining_qty} left
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-display text-lg text-brand-300">
+                          {centsToDollars(t.price_cents)}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      className="btn-primary mt-3 w-full"
+                      disabled={
+                        usingMock ||
+                        !auth.user ||
+                        t.remaining_qty <= 0 ||
+                        buyingTierId === t.id
+                      }
+                      onClick={async () => {
+                        if (!auth.user) return;
+                        setBuyingTierId(t.id);
+                        try {
+                          const data = await auth.apiFetch<{
+                            stripeCheckoutUrl: string;
+                          }>("/checkout/create-session", {
+                            method: "POST",
+                            body: JSON.stringify({
+                              ticketTierId: t.id,
+                              quantity: 1,
+                            }),
+                          });
+                          window.location.href = data.stripeCheckoutUrl;
+                        } catch (err: any) {
+                          setError(err?.message ?? "Checkout failed");
+                        } finally {
+                          setBuyingTierId(null);
+                        }
+                      }}
+                    >
+                      {usingMock
+                        ? "Connect API to buy"
+                        : !auth.user
+                          ? "Sign in to buy"
+                          : t.remaining_qty <= 0
+                            ? "Sold out"
+                            : buyingTierId === t.id
+                              ? "Redirecting…"
+                              : t.price_cents === 0
+                                ? "Reserve free seat"
+                                : `Buy for ${centsToDollars(t.price_cents)}`}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!auth.user && (
+              <p className="mt-3 text-center text-xs text-surface-400">
+                <Link to="/login" className="text-brand-300">
+                  Sign in
+                </Link>{" "}
+                to purchase tickets.
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

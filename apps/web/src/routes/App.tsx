@@ -25,6 +25,7 @@ import OrganizerAnnouncementsPage from "./OrganizerAnnouncementsPage";
 import AdminFinancePage from "./AdminFinancePage";
 import AdminAnalyticsPage from "./AdminAnalyticsPage";
 import AdminMarketingPage from "./AdminMarketingPage";
+import GlobePage from "./GlobePage";
 
 export default function App() {
   const auth = useAuth();
@@ -32,8 +33,8 @@ export default function App() {
   const isOrganizer = auth.user?.role === "organizer" || isAdmin;
 
   return (
-    <div className="min-h-full bg-surface-950 text-surface-100">
-      <header className="sticky top-0 z-50 border-b border-surface-800/80 bg-surface-950/90 backdrop-blur-xl">
+    <div className="min-h-full text-surface-100">
+      <header className="sticky top-0 z-50 border-b border-brand-500/20 bg-surface-950/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link
             to="/"
@@ -53,6 +54,9 @@ export default function App() {
               to="/pricing"
             >
               Pricing
+            </Link>
+            <Link className="btn-ghost hidden py-2 sm:inline-flex" to="/globe">
+              🌍 Globe
             </Link>
             {auth.user && (
               <Link className="btn-ghost py-2" to="/bookings">
@@ -128,6 +132,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/globe" element={<GlobePage />} />
           <Route path="/product" element={<MarketingPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
