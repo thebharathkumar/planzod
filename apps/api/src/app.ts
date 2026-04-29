@@ -9,6 +9,25 @@ import { isZodError, HttpError, getErrorMessage } from "./utils/http";
 import apiRouter from "./routes/router";
 import webhooksRouter from "./routes/webhooks";
 
+// Hosts whose subdomains we always trust — avoids one-off env config
+// pain and keeps Vercel preview deployments working.
+const TRUSTED_HOST_SUFFIXES = [".vercel.app", ".netlify.app", ".onrender.com"];
+
+function isOriginAllowed(origin: string): boolean {
+  if (!env.CORS_ORIGIN) return true; // unconfigured → allow all (dev convenience)
+  const allowed = env.CORS_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean);
+  if (allowed.includes("*")) return true;
+  if (allowed.includes(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    if (host === "localhost" || host === "127.0.0.1") return true;
+    if (TRUSTED_HOST_SUFFIXES.some((s) => host.endsWith(s))) return true;
+  } catch {
+    // ignore — invalid origin URL, treat as denied
+  }
+  return false;
+}
+
 export function createApp() {
   const app = express();
 
@@ -17,11 +36,12 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, cb) => {
-        const allowed = env.CORS_ORIGIN.split(",").map((o: string) => o.trim());
-        if (!origin || allowed.includes("*") || allowed.includes(origin))
-          return cb(null, true);
+        if (!origin) return cb(null, true);
+        if (isOriginAllowed(origin)) return cb(null, true);
+        logger.warn({ origin }, "CORS rejected request from origin");
         return cb(null, false);
       },
+      credentials: false,
     }),
   );
   app.use(helmet());
