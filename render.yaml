@@ -9,7 +9,7 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm install && npm --workspace @planzo/shared run build
+    buildCommand: npm install --include=dev && npm --workspace @planzo/shared run build
     startCommand: npm --workspace @planzo/api run start
     healthCheckPath: /api/v1/health
     envVars:
