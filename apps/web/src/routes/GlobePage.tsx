@@ -1,266 +1,159 @@
+import createGlobe from "cobe";
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MOCK_EVENTS } from "../lib/mockData";
 
-// Convert lat/lng (degrees) to a Vector3 on a unit sphere of given radius.
-function latLngToVec3(lat: number, lng: number, radius: number): THREE.Vector3 {
-  const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lng + 180) * (Math.PI / 180);
-  return new THREE.Vector3(
-    -radius * Math.sin(phi) * Math.cos(theta),
-    radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.sin(theta),
-  );
-}
-
 export default function GlobePage() {
-  const mountRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const navigate = useNavigate();
   const [hovered, setHovered] = useState<(typeof MOCK_EVENTS)[number] | null>(
     null,
   );
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+
+  // Mutable refs so the globe's onRender callback isn't stuck with a stale closure.
+  const phiRef = useRef(0);
+  const thetaRef = useRef(0.25);
+  const draggingRef = useRef(false);
+  const lastMouseRef = useRef({ x: 0, y: 0 });
+  const pointerRef = useRef<{ mx: number; my: number } | null>(null);
 
   useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const width = mount.clientWidth;
-    const height = mount.clientHeight;
+    const onPointerDown = (e: PointerEvent) => {
+      draggingRef.current = true;
+      lastMouseRef.current = { x: e.clientX, y: e.clientY };
+      canvas.style.cursor = "grabbing";
+      canvas.setPointerCapture(e.pointerId);
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      draggingRef.current = false;
+      canvas.style.cursor = "grab";
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      pointerRef.current = {
+        mx: (e.clientX - cx) / (rect.width / 2),
+        my: (e.clientY - cy) / (rect.height / 2),
+      };
 
-    const scene = new THREE.Scene();
-    scene.background = null;
+      if (draggingRef.current) {
+        const dx = e.clientX - lastMouseRef.current.x;
+        const dy = e.clientY - lastMouseRef.current.y;
+        phiRef.current += dx * 0.005;
+        thetaRef.current = Math.max(
+          -0.8,
+          Math.min(0.8, thetaRef.current + dy * 0.005),
+        );
+        lastMouseRef.current = { x: e.clientX, y: e.clientY };
+      }
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 7);
+      // Hover detection in screen space.
+      let found: (typeof MOCK_EVENTS)[number] | null = null;
+      const phi = phiRef.current;
+      const theta = thetaRef.current;
+      for (const ev of MOCK_EVENTS) {
+        // Cobe's coordinate convention: longitude rotates around y, latitude offsets in projection.
+        // We mirror its math here for click/hover hit-testing.
+        const lat = (ev.lat * Math.PI) / 180;
+        const lng = (ev.lng * Math.PI) / 180;
+        const sx = Math.cos(lat) * Math.sin(lng + phi);
+        const sy =
+          Math.sin(lat) * Math.cos(theta) -
+          Math.cos(lat) * Math.cos(lng + phi) * Math.sin(theta);
+        const sz =
+          Math.cos(lat) * Math.cos(lng + phi) * Math.cos(theta) +
+          Math.sin(lat) * Math.sin(theta);
+        if (sz > 0.1 && pointerRef.current) {
+          const d = Math.hypot(
+            sx - pointerRef.current.mx,
+            sy - pointerRef.current.my,
+          );
+          if (d < 0.08) {
+            found = ev;
+            break;
+          }
+        }
+      }
+      setHovered(found);
+      setHoverPos({ x: e.clientX, y: e.clientY });
+      canvas.style.cursor = found
+        ? "pointer"
+        : draggingRef.current
+          ? "grabbing"
+          : "grab";
+    };
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(width, height);
-    mount.appendChild(renderer.domElement);
+    const onClick = () => {
+      if (hovered) navigate(`/events/${hovered.id}`);
+    };
 
-    // Sphere (the globe).
-    const radius = 2.2;
-    const sphereGeo = new THREE.SphereGeometry(radius, 64, 64);
-    const sphereMat = new THREE.MeshPhongMaterial({
-      color: 0x1a140f,
-      emissive: 0x140a04,
-      shininess: 8,
-      transparent: true,
-      opacity: 0.95,
-    });
-    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-    scene.add(sphere);
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("click", onClick);
 
-    // Wireframe overlay (gives that "data globe" look).
-    const wireGeo = new THREE.SphereGeometry(radius * 1.001, 32, 32);
-    const wireMat = new THREE.MeshBasicMaterial({
-      color: 0xf97316,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.18,
-    });
-    scene.add(new THREE.Mesh(wireGeo, wireMat));
-
-    // Atmosphere halo
-    const haloGeo = new THREE.SphereGeometry(radius * 1.18, 64, 64);
-    const haloMat = new THREE.ShaderMaterial({
-      transparent: true,
-      side: THREE.BackSide,
-      uniforms: {
-        c: { value: 0.5 },
-        p: { value: 4.0 },
+    const size = canvas.clientWidth;
+    const globe = createGlobe(canvas, {
+      devicePixelRatio: window.devicePixelRatio || 2,
+      width: size * 2,
+      height: size * 2,
+      phi: 0,
+      theta: 0.25,
+      dark: 1,
+      diffuse: 1.4,
+      mapSamples: 16000,
+      mapBrightness: 5.5,
+      // Warm orange ↔ violet to match the rest of the app.
+      baseColor: [0.18, 0.12, 0.08],
+      markerColor: [0.97, 0.45, 0.09],
+      glowColor: [0.55, 0.28, 0.55],
+      markers: MOCK_EVENTS.map((e) => ({
+        location: [e.lat, e.lng] as [number, number],
+        size: e.featured ? 0.09 : 0.06,
+      })),
+      onRender: (state) => {
+        if (!draggingRef.current) {
+          phiRef.current += 0.0025;
+        }
+        state.phi = phiRef.current;
+        state.theta = thetaRef.current;
       },
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vNormal;
-        uniform float c;
-        uniform float p;
-        void main() {
-          float intensity = pow(c - dot(vNormal, vec3(0.0, 0.0, 1.0)), p);
-          gl_FragColor = vec4(0.97, 0.45, 0.09, 1.0) * intensity;
-        }
-      `,
     });
-    scene.add(new THREE.Mesh(haloGeo, haloMat));
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-    const dir = new THREE.DirectionalLight(0xffd9a8, 1.1);
-    dir.position.set(5, 3, 5);
-    scene.add(dir);
-    const dir2 = new THREE.DirectionalLight(0x8b5cf6, 0.4);
-    dir2.position.set(-5, -3, -5);
-    scene.add(dir2);
-
-    // Event pins
-    const pinGroup = new THREE.Group();
-    const pinMeshes: {
-      mesh: THREE.Mesh;
-      event: (typeof MOCK_EVENTS)[number];
-    }[] = [];
-    const pinGeo = new THREE.SphereGeometry(0.04, 16, 16);
-
-    for (const ev of MOCK_EVENTS) {
-      const pos = latLngToVec3(ev.lat, ev.lng, radius * 1.02);
-      const mat = new THREE.MeshBasicMaterial({
-        color: ev.featured ? 0xfbbf24 : 0xf97316,
-      });
-      const mesh = new THREE.Mesh(pinGeo, mat);
-      mesh.position.copy(pos);
-      mesh.userData = { eventId: ev.id };
-      pinGroup.add(mesh);
-      pinMeshes.push({ mesh, event: ev });
-
-      // Outer glow ring
-      const ringGeo = new THREE.SphereGeometry(0.07, 16, 16);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: ev.featured ? 0xfbbf24 : 0xf97316,
-        transparent: true,
-        opacity: 0.3,
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.position.copy(pos);
-      pinGroup.add(ring);
-    }
-    scene.add(pinGroup);
-
-    // Stars background
-    const starGeo = new THREE.BufferGeometry();
-    const starPositions: number[] = [];
-    for (let i = 0; i < 800; i++) {
-      const r = 80 + Math.random() * 40;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      starPositions.push(
-        r * Math.sin(phi) * Math.cos(theta),
-        r * Math.sin(phi) * Math.sin(theta),
-        r * Math.cos(phi),
-      );
-    }
-    starGeo.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(starPositions, 3),
-    );
-    const stars = new THREE.Points(
-      starGeo,
-      new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 0.4,
-        sizeAttenuation: true,
-      }),
-    );
-    scene.add(stars);
-
-    // Drag-to-rotate
-    let isDragging = false;
-    let prev = { x: 0, y: 0 };
-    let rotX = 0;
-    let rotY = 0;
-    let velY = 0.0015;
-
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      isDragging = true;
-      const p = "touches" in e ? e.touches[0] : (e as MouseEvent);
-      prev = { x: p.clientX, y: p.clientY };
-    };
-    const onMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging) return;
-      const p = "touches" in e ? e.touches[0] : (e as MouseEvent);
-      const dx = p.clientX - prev.x;
-      const dy = p.clientY - prev.y;
-      rotY += dx * 0.005;
-      rotX += dy * 0.005;
-      rotX = Math.max(-1.2, Math.min(1.2, rotX));
-      prev = { x: p.clientX, y: p.clientY };
-      velY = 0;
-    };
-    const onUp = () => {
-      isDragging = false;
-    };
-
-    renderer.domElement.addEventListener("mousedown", onDown);
-    renderer.domElement.addEventListener("touchstart", onDown);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("touchmove", onMove);
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("touchend", onUp);
-
-    // Hover detection via raycast
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const onPointerMove = (e: MouseEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    };
-    renderer.domElement.addEventListener("mousemove", onPointerMove);
-
-    function animate() {
-      requestAnimationFrame(animate);
-      if (!isDragging) {
-        rotY += velY;
-      }
-      sphere.rotation.y = rotY;
-      sphere.rotation.x = rotX;
-      pinGroup.rotation.y = rotY;
-      pinGroup.rotation.x = rotX;
-      stars.rotation.y += 0.0001;
-
-      raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(
-        pinMeshes.map((p) => p.mesh),
-        false,
-      );
-      if (hits.length > 0) {
-        const target = pinMeshes.find((p) => p.mesh === hits[0].object);
-        if (target) setHovered(target.event);
-        renderer.domElement.style.cursor = "pointer";
-      } else {
-        setHovered(null);
-        renderer.domElement.style.cursor = "grab";
-      }
-
-      renderer.render(scene, camera);
-    }
-    animate();
+    canvas.style.cursor = "grab";
 
     const onResize = () => {
-      const w = mount.clientWidth;
-      const h = mount.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      // cobe doesn't support resize natively; for our purposes the fixed pixel
+      // ratio handles most cases. Reload on big window changes if needed.
     };
     window.addEventListener("resize", onResize);
 
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("touchmove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      window.removeEventListener("touchend", onUp);
+      globe.destroy();
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("click", onClick);
       window.removeEventListener("resize", onResize);
-      renderer.domElement.removeEventListener("mousedown", onDown);
-      renderer.domElement.removeEventListener("touchstart", onDown);
-      renderer.domElement.removeEventListener("mousemove", onPointerMove);
-      mount.removeChild(renderer.domElement);
-      renderer.dispose();
-      sphereGeo.dispose();
-      sphereMat.dispose();
-      wireGeo.dispose();
-      wireMat.dispose();
-      pinGeo.dispose();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <span className="badge-violet">Interactive</span>
           <h1 className="mt-2 font-display text-4xl">
@@ -277,44 +170,68 @@ export default function GlobePage() {
 
       <div className="relative">
         <div
-          ref={mountRef}
-          className="h-[600px] w-full overflow-hidden rounded-2xl"
+          className="relative mx-auto aspect-square w-full max-w-2xl overflow-hidden rounded-3xl"
           style={{
             background:
-              "radial-gradient(circle at center, rgba(249,115,22,0.08), transparent 70%), #08050a",
+              "radial-gradient(circle at center, rgba(249,115,22,0.10), transparent 70%), #08050a",
           }}
-        />
+        >
+          <canvas
+            ref={canvasRef}
+            style={{
+              width: "100%",
+              height: "100%",
+              aspectRatio: "1",
+            }}
+          />
+        </div>
 
-        {hovered && (
-          <Link
-            to={`/events/${hovered.id}`}
-            className="card-hover absolute right-4 top-4 max-w-sm"
+        {hovered && hoverPos && (
+          <div
+            className="pointer-events-none fixed z-50 max-w-xs"
+            style={{
+              left: Math.min(hoverPos.x + 16, window.innerWidth - 320),
+              top: Math.min(hoverPos.y + 16, window.innerHeight - 160),
+            }}
           >
-            <div className="flex gap-3">
-              {hovered.hero_image_url && (
-                <div
-                  className="h-16 w-24 shrink-0 rounded-lg bg-cover bg-center"
-                  style={{ backgroundImage: `url(${hovered.hero_image_url})` }}
-                />
-              )}
-              <div>
-                <div className="flex gap-2">
-                  <span className="badge">{hovered.category}</span>
-                  {hovered.featured && <span className="badge-violet">★</span>}
-                </div>
-                <h3 className="mt-1 font-medium">{hovered.title}</h3>
-                <p className="text-xs text-surface-400">
-                  {hovered.city} ·{" "}
-                  {new Date(hovered.starts_at).toLocaleDateString()}
-                </p>
+            <div className="card pointer-events-auto">
+              <div className="flex items-center gap-2">
+                <span className="badge">{hovered.category}</span>
+                {hovered.featured && <span className="badge-violet">★</span>}
               </div>
+              <p className="mt-1 font-medium">{hovered.title}</p>
+              <p className="text-xs text-surface-400">
+                {hovered.city} ·{" "}
+                {new Date(hovered.starts_at).toLocaleDateString()}
+              </p>
+              <p className="mt-1 text-xs text-brand-300">Click to open →</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {MOCK_EVENTS.slice(0, 6).map((e) => (
+          <Link
+            key={e.id}
+            to={`/events/${e.id}`}
+            className="card-hover overflow-hidden p-0"
+          >
+            {e.hero_image_url && (
+              <div
+                className="h-28 w-full bg-cover bg-center"
+                style={{ backgroundImage: `url(${e.hero_image_url})` }}
+              />
+            )}
+            <div className="p-3">
+              <span className="badge">{e.category}</span>
+              <p className="mt-1 font-medium text-surface-100">{e.title}</p>
+              <p className="text-xs text-surface-400">
+                {e.city} · {new Date(e.starts_at).toLocaleDateString()}
+              </p>
             </div>
           </Link>
-        )}
-
-        <div className="absolute bottom-4 left-4 flex gap-2">
-          <span className="badge">{MOCK_EVENTS.length} events worldwide</span>
-        </div>
+        ))}
       </div>
     </div>
   );

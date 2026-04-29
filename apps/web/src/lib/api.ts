@@ -4,13 +4,27 @@
 import { API_BASE_URL } from "./env";
 import { MOCK_EVENTS, filterMockEvents, findMockEvent } from "./mockData";
 
-let apiAvailable: boolean | null = null;
+// Skip the network probe entirely if the env wasn't configured — common on
+// Vercel without an API set up — so the SPA renders mock data instantly.
+const apiConfigured = (() => {
+  if (typeof window === "undefined") return false;
+  if (!API_BASE_URL) return false;
+  if (
+    API_BASE_URL.includes("localhost") &&
+    window.location.hostname !== "localhost"
+  ) {
+    return false;
+  }
+  return true;
+})();
+
+let apiAvailable: boolean | null = apiConfigured ? null : false;
 
 async function probe(): Promise<boolean> {
   if (apiAvailable !== null) return apiAvailable;
   try {
     const res = await fetch(`${API_BASE_URL}/health`, {
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(1500),
     });
     apiAvailable = res.ok;
   } catch {

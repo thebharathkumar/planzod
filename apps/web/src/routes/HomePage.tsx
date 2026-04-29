@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { Link } from "react-router-dom";
 import Recommendations from "../components/Recommendations";
-import { searchEvents, isMockMode } from "../lib/api";
+import { searchEvents } from "../lib/api";
 
 type SearchResult = {
   id: string;
@@ -61,6 +61,26 @@ function FlyTo({
   useEffect(() => {
     map.flyTo([lat, lng], zoom, { duration: 0.8 });
   }, [lat, lng, zoom, map]);
+  return null;
+}
+
+// Leaflet sometimes initializes before its container settles its size, leaving
+// blank tiles. Force a recompute on mount and on window resize.
+function MapAutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    const fix = () => map.invalidateSize();
+    const t1 = setTimeout(fix, 100);
+    const t2 = setTimeout(fix, 400);
+    const t3 = setTimeout(fix, 1000);
+    window.addEventListener("resize", fix);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener("resize", fix);
+    };
+  }, [map]);
   return null;
 }
 
@@ -259,8 +279,8 @@ export default function HomePage() {
 
         <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
           {/* Map */}
-          <div className="card overflow-hidden p-0">
-            <div className="h-[480px] w-full">
+          <div className="card overflow-hidden p-0 lg:sticky lg:top-20 lg:self-start">
+            <div className="h-[520px] w-full">
               <MapContainer
                 center={[location.lat, location.lng]}
                 zoom={zoom}
@@ -271,6 +291,7 @@ export default function HomePage() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <MapAutoResize />
                 <FlyTo lat={location.lat} lng={location.lng} zoom={zoom} />
                 {results.map((r) => (
                   <Marker
